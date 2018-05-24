@@ -10,13 +10,13 @@ import matplotlib as mpl
 
 import matplotlib.pyplot as plt
 
-from PyQt5.QtCore import Qt, QRectF
+from PyQt5.QtCore import Qt, QRectF, QPointF
 from PyQt5.QtGui import QImage, QPixmap, QColor, QPen, QIcon
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QGraphicsView, QGraphicsScene,
                              QGridLayout, QWidget, QGraphicsRectItem, QTabWidget,
                              QMenu, QFileDialog, QAction, QComboBox, QHBoxLayout,
                              QGroupBox, QLabel, QGraphicsTextItem, QGraphicsItem,
-                             QLineEdit, QTableWidget, QTableWidgetItem)
+                             QLineEdit, QTableWidget, QTableWidgetItem,)
 
 from reader import DecontaminatedSpectraCollection
 
@@ -96,7 +96,7 @@ class View(QGraphicsView):
 
 class Rect(QGraphicsRectItem):
 
-    inactive_opacity = 0.25  # the opacity of rectangles that are not in focus
+    inactive_opacity = 0.21  # the opacity of rectangles that are not in focus
 
     def __init__(self, *args):
         rect = QRectF(*args)
@@ -129,7 +129,7 @@ class Rect(QGraphicsRectItem):
 
     def mousePressEvent(self, event: 'QGraphicsSceneMouseEvent'):
         keys = event.modifiers()
-        
+
         if keys & Qt.CTRL:
             self.grabKeyboard()
         else:
@@ -138,71 +138,105 @@ class Rect(QGraphicsRectItem):
 
     def handle_pinning(self, event):
         if self.pinned:  # it's already pinned; unpin it
-            self.setPen(green_pen)
-            if self.label is not None:
-                self.scene().removeItem(self.label)
-                self.label = None
-            self.pinned = False
+            self.unpin()
         else:  # it's not pinned; pin it
-            self.setPen(red_pen)
+            self.pin(event.scenePos())
 
+    def pin(self, label_pos=None):
+        if label_pos is not None:
             self.label = QGraphicsTextItem(f"{self._spec.id}", parent=self)
-            self.label.setPos(event.scenePos())
+            self.label.setPos(label_pos)
             self.label.setDefaultTextColor(QColor('red'))
-            self.pinned = True
+        else:
+            self.label = QGraphicsTextItem(f"{self._spec.id}")
+            self.label.setDefaultTextColor(QColor('red'))
+            self.scene().addItem(self.label)
+            self.label.setPos(self.scenePos())
+
+        self.setPen(red_pen)
+        self.setOpacity(1.0)
+        self.pinned = True
+
+    def unpin(self):
+        self.setPen(green_pen)
+        if self.label is not None:
+            self.scene().removeItem(self.label)
+            self.label = None
+        self.pinned = False
 
     def keyPressEvent(self, event):
-        print('a key was pressed')
-        print(event.key())
+
         if event.key() == Qt.Key_Up or  event.key() == Qt.Key_Down:
-            self.plot_culumn_sums()
+            self.plot_column_sums()
 
         if event.key() == Qt.Key_Right or event.key() == Qt.Key_Left:
-            plt.close()
-            plt.plot(self._spec.science.sum(axis=1))
+            self.plot_row_sums()
 
         if event.key() == Qt.Key_S:
             plt.close()
             plt.imshow(self._spec.science)
+            plt.title('Decontaminated Spectrum')
+            plt.draw()
 
         if event.key() == Qt.Key_V:
             plt.close()
             plt.imshow(self._spec.variance)
+            plt.title('Variance')
+            plt.draw()
 
         if event.key() == Qt.Key_C:
             plt.close()
             plt.imshow(self._spec.contamination)
+            plt.title('Contamination')
+            plt.draw()
 
-        # todo: also show original image and the residual. raise main window to top or make it active at least (better).
+        if event.key() == Qt.Key_O:
+            plt.close()
+            plt.imshow(self.spec.contamination + self.spec.science)
+            plt.title('Original Data')
+            plt.draw()
+
+        # todo: show the residual. raise main window to top or make it active at least (better).
         # add ability to add multiple plots to the same canvas
 
         if event.key() == Qt.Key_L:
             print("Contaminants:")
             print(self._spec.contaminants)
 
-        self.window().activateWindow()
-
     def contextMenuEvent(self, event):
         menu = QMenu(self)
-        
+
         show_spectrum_info = menu.addAction("inspect in 'Spectrum View'", self._main.toggle_bounding_boxes)
 
         plot_columns = QAction('Plot column sums', menu)
 
         plot_columns = QAction('Load Exposures', menu)
         plot_columns.setShortcut(Qt.Key_Up)
-        plot_columns.setStatusTip('Plot the sums of the colums of pixels in the 2D spectrum.')
+        plot_columns.setStatusTip('Plot the sums of the columns of pixels in the 2D spectrum.')
         plot_columns.triggered.connect(self.plot_culumn_sums)
 
         menu.addAction(plot_columns)
 
         menu.exec(event.globalPos())
 
-    def plot_culumn_sums(self):
+    def plot_column_sums(self):
+        self.plot_pixel_sums(0, 'Column')
+
+    def plot_row_sums(self):
+        self.plot_pixel_sums(1, 'Row')
+
+    def plot_pixel_sums(self, axis, label):
         plt.close()
-        plt.plot(self._spec.science.sum(axis=0))
-        # TODO: consider plotting both the decontaminated sums, the original, and the contaminants, labeled appropriately.
-        #plt.draw()
+        science = self.spec.science.sum(axis=axis)
+        contamination = self.spec.contamination.sum(axis=axis)
+        plt.plot(contamination, alpha=0.6, label='Contamination')
+        plt.plot(science + contamination, alpha=0.6, label='Original')
+        plt.plot(science, label='Decontaminated')
+        plt.title(f'Object ID: {self.spec.id}')
+        plt.xlabel(f'Pixel {label}')
+        plt.ylabel(f'{label} Sum')
+        plt.legend()
+        plt.draw()
 
     def show_contaminant_table(self):
         contents = self.spec.contaminants
@@ -244,6 +278,7 @@ class Inspector:
 
         self.single_dither_box = QComboBox()
         self.single_detector_box = QComboBox()
+        self.searchbox = QLineEdit()
 
         self.make_detector_selection_box()
 
@@ -283,8 +318,6 @@ class Inspector:
         main.setWindowIcon(QIcon('./Euclid.png'))
 
         main.showMaximized()
-
-        #main.showFullScreen()
 
         return main
 
@@ -331,17 +364,14 @@ class Inspector:
 
         top_layout.addWidget(selector_box, Qt.AlignLeft)
 
-        searchbox = QLineEdit()
-        searchbox.setMaximumWidth(250)
-        searchbox.setMaximumWidth(200)
-        searchbox.setPlaceholderText('Search by ID')
-        # TODO set trigger ; return selects the specified object in the current view; error feedback if not present.
-        # Make this a member of the class, so it is self.searchbox and connect QLineEdit::returnPressed() with a function that accepts a string as a parameter
-        # self.searchbox.returnPressed.connect(self.bla)
+        self.searchbox.setMaximumWidth(250)
+        self.searchbox.setMaximumWidth(200)
+        self.searchbox.setPlaceholderText('Search by ID')
+        self.searchbox.returnPressed.connect(self.select_spectrum)
 
         top_layout.addStretch(1)
 
-        top_layout.addWidget(searchbox, Qt.AlignRight)
+        top_layout.addWidget(self.searchbox, Qt.AlignRight)
 
         selector_layout = QHBoxLayout()
 
@@ -373,6 +403,7 @@ class Inspector:
         self.single_detector_box.setCurrentText('detector')
         self.single_detector_box.setMinimumWidth(50)
         self.single_detector_box.setMaximumWidth(100)
+        self.single_detector_box.setMaximumWidth(100)
         self.single_detector_box.setEnabled(False)
 
         selector_layout.addWidget(detector_label)
@@ -396,7 +427,7 @@ class Inspector:
         nisp_exposures_json_file, _ = QFileDialog.getOpenFileName(self.main,
                                                                   caption='Open NISP Exposures',
                                                                   filter='*.json')
-        
+
         if not os.path.isfile(nisp_exposures_json_file):
             return
 
@@ -406,7 +437,7 @@ class Inspector:
         self.exposures = {}  # {dither: {detector: image}}
 
         for exposure_name in nisp_exposure_filenames:
-            full_path = os.path.join('data', exposure_name)
+            full_path = os.path.join(os.path.dirname(nisp_exposures_json_file), 'data', exposure_name)
             print(f"loading {full_path}")
             exposure = fits.open(full_path, memmap=True)
             dither = exposure[0].header['DITHSEQ']
@@ -460,6 +491,8 @@ class Inspector:
         self.scene.clear()
         self.scene.addPixmap(pixmap)
 
+        self.boxes = False
+
     def exit(self):
         print('shutting down')
         self.main.close()
@@ -467,7 +500,7 @@ class Inspector:
 
     def show_bounding_box(self, dither, detector, object_id):
         spec = self.collection.get_spectrum(dither, detector, object_id)
-        self.draw_spec_box(spec)
+        return self.draw_spec_box(spec)
 
     def draw_spec_box(self, spec):
         if spec is not None:
@@ -481,12 +514,14 @@ class Inspector:
 
             self.scene.addItem(rect)
 
+            return rect, QPointF(left, top)
+
     def show_bounding_boxes(self, dither, detector):
         for spec in self.collection.get_spectra(dither, detector):
             self.draw_spec_box(spec)
 
     def toggle_bounding_boxes(self):
-        if self.boxes:
+        if not self.boxes:
             self.show_boxes_in_view()
         else:
             self.remove_boxes_in_view()
@@ -509,6 +544,20 @@ class Inspector:
         det = self.single_current_detector
 
         return dith in self.collection.get_dithers() and det in self.collection.get_detectors(dith)
+
+    def select_spectrum(self):
+        object_id = self.searchbox.text()
+
+        if self.collection is None or self.exposures is None:
+            return
+
+        spec = self.collection.get_spectrum(self.single_current_dither, self.single_current_detector, object_id)
+
+        if spec is None:
+            self.searchbox.setText('Not found')
+        else:
+            spec_box, pos = self.show_bounding_box(self.single_current_dither, self.single_current_detector, object_id)
+            spec_box.pin(pos)
 
 
 if __name__ == '__main__':
