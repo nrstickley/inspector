@@ -1,0 +1,151 @@
+from PyQt5.QtWidgets import (QApplication, QMainWindow, QGraphicsView, QGraphicsScene,
+                             QGridLayout, QWidget, QGraphicsRectItem, QTabWidget,
+                             QMenu)
+
+from PyQt5.QtGui import QImage, QPixmap, QColor, QPen
+
+from PyQt5.QtCore import QRectF
+
+def to_8bit(im, maxval=60000):
+    return (2 * 255 * (np.arctan(50 * im.astype(np.float32) / maxval) / np.pi)).astype(np.uint8)
+
+
+class View(QGraphicsView):
+
+    def __init__(self, name):
+        super().__init__()
+        self._name = name
+
+    def contextMenuEvent(self, event):
+        menu = QMenu(self)
+        menu.addAction("Hello!", self.print_message)
+        menu.exec(event.globalPos())
+
+    def print_message(self):
+        print(f"'Hello!' was clicked on the View named '{self._name}'")
+
+
+app = QApplication([])
+main = QMainWindow()
+main.setWindowTitle('my app')
+main.resize(1000, 1000)
+main.show()
+menu = main.menuBar()
+file_menu = menu.addMenu('File')
+load = file_menu.addAction('load...')
+
+toolbar = main.addToolBar('tools')
+
+toolbar.addAction('help')
+
+tabs = QTabWidget()
+
+multi_layout = QGridLayout()
+
+single_layout = QGridLayout()
+
+multi = QWidget()
+
+single = QWidget()
+
+multi.setLayout(multi_layout)
+
+single.setLayout(single_layout)
+
+tabs.addTab(single, "Single view")
+
+tabs.addTab(multi, "Multi view")
+
+main.setCentralWidget(tabs)
+
+gview = View('single')
+gview0 = View('upper-left')
+gview1 = View('upper-right')
+gview2 = View('lower-left')
+gview3 = View('lower-right')
+
+#gview.setGeometry(0,0, 900, 900)
+#gview0.setGeometry(0, 0, 420, 420)
+#gview1.setGeometry(0, 0, 420, 420)
+#gview2.setGeometry(0, 0, 420, 420)
+#gview3.setGeometry(0, 0, 420, 420)
+
+single_layout.addWidget(gview)
+
+multi_layout.addWidget(gview0, 0, 0)
+multi_layout.addWidget(gview1, 0, 1)
+multi_layout.addWidget(gview2, 1, 0)
+multi_layout.addWidget(gview3, 1, 1)
+
+scene = QGraphicsScene()
+scene0 = QGraphicsScene()
+scene1 = QGraphicsScene()
+scene2 = QGraphicsScene()
+scene3 = QGraphicsScene()
+
+#f = fits.open('/data/EUC_SIM_NISRED0-53877-1_20170329T090025.785Z_SC3T6.fits')
+f = fits.open('/data/decontamination/full/merged_catalog_150.0_2.2-m22+stars_NISP_GR0_000_13_IMG.fits')
+
+im = to_8bit(f[1].data[0:890, 0:890], maxval=f[1].data.max())
+im0 = to_8bit(f[1].data[500:900, 800:1200], maxval=f[1].data.max())
+im1 = to_8bit(f[1].data[900:1300, 800:1200], maxval=f[1].data.max())
+im2 = to_8bit(f[1].data[1100:1500, 1000:1400], maxval=f[1].data.max())
+im3 = to_8bit(f[1].data[1600:2000, 1600:2000], maxval=f[1].data.max())
+
+image = QImage(im.flatten().tobytes(), im.shape[1], im.shape[0], QImage.Format_Grayscale8)
+image0 = QImage(im0.flatten().tobytes(), im0.shape[1], im0.shape[0], QImage.Format_Grayscale8)
+image1 = QImage(im1.flatten().tobytes(), im1.shape[1], im1.shape[0], QImage.Format_Grayscale8)
+image2 = QImage(im2.flatten().tobytes(), im2.shape[1], im2.shape[0], QImage.Format_Grayscale8)
+image3 = QImage(im3.flatten().tobytes(), im3.shape[1], im3.shape[0], QImage.Format_Grayscale8)
+
+pixmap = QPixmap(image)
+pixmap0 = QPixmap(image0)
+pixmap1 = QPixmap(image1)
+pixmap2 = QPixmap(image2)
+pixmap3 = QPixmap(image3)
+
+gpixmap = scene.addPixmap(pixmap)
+gpixmap0 = scene0.addPixmap(pixmap0)
+gpixmap1 = scene1.addPixmap(pixmap1)
+gpixmap2 = scene2.addPixmap(pixmap2)
+gpixmap3 = scene3.addPixmap(pixmap3)
+
+gview.setScene(scene)
+gview0.setScene(scene0)
+gview1.setScene(scene1)
+gview2.setScene(scene2)
+gview3.setScene(scene3)
+
+red_pen = QPen(QColor('red'))
+green_pen = QPen(QColor('green'))
+
+#rect0 = scene0.addRect(25, 24, 100, 10, red_pen)
+
+rect3 = scene3.addRect(50, 80, 120, 14, green_pen)
+
+class Rect(QGraphicsRectItem):
+    def __init__(self, *args):
+        rect = QRectF(*args)
+        super().__init__(rect)
+        self.setPen(green_pen)
+        self.setAcceptHoverEvents(True)
+    def hoverEnterEvent(self, event):
+        #print("I am being hovered over.")
+        self.setPen(red_pen)
+    def hoverLeaveEvent(self, event):
+        #print("The hovering stopped.")
+        self.setPen(green_pen)
+ 
+rect = Rect(25, 24, 100, 10)
+
+bigrect = Rect(10, 10, 150, 30)
+
+scene0.addItem(rect)
+scene0.addItem(bigrect)
+
+# https://stackoverflow.com/questions/7140994/overlaping-qgraphicsitem-s-hover-events?utm_medium=organic&utm_source=google_rich_qa&utm_campaign=google_rich_qa
+
+# for context menu, we need to override a method of QGraphicsView, so we need to create a subclass of QGraphicsView
+# https://stackoverflow.com/questions/10766775/showing-a-popup-menu-on-qgraphicsscene-click-or-right-click?utm_medium=organic&utm_source=google_rich_qa&utm_campaign=google_rich_qa
+# signals and slots:
+# http://pyqt.sourceforge.net/Docs/PyQt5/signals_slots.html
