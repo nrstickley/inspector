@@ -253,7 +253,7 @@ class Inspector:
     def init_main(self):
         """Creates the main application window."""
         main = QMainWindow()
-        main.setWindowTitle('Decontamination Inspector')
+        main.setWindowTitle('Decontamination InSpector')
         main.resize(1200, 950)
 
         multi = QWidget()
