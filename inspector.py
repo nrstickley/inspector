@@ -21,8 +21,6 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QGraphicsView, QGraphics
 from reader import DecontaminatedSpectraCollection
 
 
-plt.ion()
-
 red_pen = QPen(QColor('red'))
 green_pen = QPen(QColor('green'))
 
@@ -176,25 +174,25 @@ class Rect(QGraphicsRectItem):
             plt.close()
             plt.imshow(self._spec.science)
             plt.title('Decontaminated Spectrum')
-            plt.draw()
+            plt.show()
 
         if event.key() == Qt.Key_V:
             plt.close()
             plt.imshow(self._spec.variance)
             plt.title('Variance')
-            plt.draw()
+            plt.show()
 
         if event.key() == Qt.Key_C:
             plt.close()
             plt.imshow(self._spec.contamination)
             plt.title('Contamination')
-            plt.draw()
+            plt.show()
 
         if event.key() == Qt.Key_O:
             plt.close()
             plt.imshow(self.spec.contamination + self.spec.science)
             plt.title('Original Data')
-            plt.draw()
+            plt.show()
 
         # todo: show the residual. raise main window to top or make it active at least (better).
         # add ability to add multiple plots to the same canvas
@@ -236,7 +234,7 @@ class Rect(QGraphicsRectItem):
         plt.xlabel(f'Pixel {label}')
         plt.ylabel(f'{label} Sum')
         plt.legend()
-        plt.draw()
+        plt.show()
 
     def show_contaminant_table(self):
         contents = self.spec.contaminants
@@ -565,6 +563,8 @@ if __name__ == '__main__':
     app = QApplication(sys.argv)
 
     mpl.use('Qt5Agg')
+
+    #plt.ion()
 
     inspector = Inspector(app)
 
