@@ -8,8 +8,6 @@ import numpy as np
 from astropy.io import fits
 import matplotlib as mpl
 
-mpl.use('Qt5Agg')
-
 import matplotlib.pyplot as plt
 
 from PyQt5.QtCore import Qt, QRectF
@@ -18,7 +16,7 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QGraphicsView, QGraphics
                              QGridLayout, QWidget, QGraphicsRectItem, QTabWidget,
                              QMenu, QFileDialog, QAction, QComboBox, QHBoxLayout,
                              QGroupBox, QLabel, QGraphicsTextItem, QGraphicsItem,
-                             QLineEdit)
+                             QLineEdit, QTableWidget, QTableWidgetItem)
 
 from reader import DecontaminatedSpectraCollection
 
@@ -205,6 +203,18 @@ class Rect(QGraphicsRectItem):
         plt.plot(self._spec.science.sum(axis=0))
         # TODO: consider plotting both the decontaminated sums, the original, and the contaminants, labeled appropriately.
         #plt.draw()
+
+    def show_contaminant_table(self):
+        contents = self.spec.contaminants
+        rows = len(contents)
+        columns = 2
+
+        table = QTableWidget(columns, rows, self.window())
+        table.setWindowFlag(Qt.Window, True)
+        table.setHorizontalHeaderLabels(['Object ID', 'Order'])
+        # https://evileg.com/en/post/236/
+        # http://doc.qt.io/qt-5/qtablewidget.html
+        table.show()
 
 
 class Inspector:
@@ -504,6 +514,8 @@ class Inspector:
 if __name__ == '__main__':
 
     app = QApplication(sys.argv)
+
+    mpl.use('Qt5Agg')
 
     inspector = Inspector(app)
 
