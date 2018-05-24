@@ -1,6 +1,6 @@
 # InSpector
 
-In_Spect_or is a GUI tool for inspecting the output of the SIR Spectra Decontamination module.
+InSpector is a GUI tool for inspecting the output of the SIR Spectra Decontamination module.
 
 ## Requirements
 
