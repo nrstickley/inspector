@@ -16,7 +16,7 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QGraphicsView, QGraphics
                              QGridLayout, QWidget, QGraphicsRectItem, QTabWidget,
                              QMenu, QFileDialog, QAction, QComboBox, QHBoxLayout,
                              QGroupBox, QLabel, QGraphicsTextItem, QGraphicsItem,
-                             QLineEdit, QTableWidget, QTableWidgetItem,)
+                             QLineEdit, QTableWidget, QTableWidgetItem, QGraphicsPixmapItem)
 
 from reader import DecontaminatedSpectraCollection
 
@@ -81,7 +81,17 @@ class View(QGraphicsView):
         #self.setDragMode(QGraphicsView.ScrollHandDrag)
         self.setDragMode(QGraphicsView.RubberBandDrag)
 
+        self._scale_factor = 1.0
+
     def contextMenuEvent(self, event):
+
+        item = self.scene().itemAt(event.pos(), self.transform())  # This transform or the event.pos() seems to be the incorrect argument.
+
+        if issubclass(type(item), QGraphicsItem) and not isinstance(item, QGraphicsPixmapItem):
+            # TODO: forward the right-click to the item somehow
+            print("forward the click!")
+            return
+
         menu = QMenu(self)
         show_hide = 'Hide' if self._main.boxes else 'Show'
         show_bounding = menu.addAction(show_hide + " bounding boxes", self._main.toggle_bounding_boxes)
@@ -90,6 +100,27 @@ class View(QGraphicsView):
             show_bounding.setDisabled(True)
 
         menu.exec(event.globalPos())
+
+    def keyPressEvent(self, event):
+
+        increment = 1.05
+
+        if event.key() == Qt.Key_Plus:
+            self._scale_factor *= increment
+            self.scale(increment, increment)
+            return
+
+        if event.key() == Qt.Key_Minus:
+            self._scale_factor /= increment
+            self.scale(1.0 / increment, 1.0 / increment)
+            return
+
+        if event.key() == Qt.Key_1:
+            self.scale(1.0 / self._scale_factor, 1.0 / self._scale_factor)
+            self._scale_factor = 1.0
+            return
+
+        self.scene().keyPressEvent(event)
 
 
 class Rect(QGraphicsRectItem):
@@ -164,35 +195,41 @@ class Rect(QGraphicsRectItem):
 
     def keyPressEvent(self, event):
 
-        if event.key() == Qt.Key_Up or  event.key() == Qt.Key_Down:
+        if event.key() == Qt.Key_Up or event.key() == Qt.Key_Down:
             self.plot_column_sums()
+            return
 
         if event.key() == Qt.Key_Right or event.key() == Qt.Key_Left:
             self.plot_row_sums()
+            return
 
         if event.key() == Qt.Key_S:
             plt.close()
             plt.imshow(self._spec.science)
             plt.title('Decontaminated Spectrum')
             plt.show()
+            return
 
         if event.key() == Qt.Key_V:
             plt.close()
             plt.imshow(self._spec.variance)
             plt.title('Variance')
             plt.show()
+            return
 
         if event.key() == Qt.Key_C:
             plt.close()
             plt.imshow(self._spec.contamination)
             plt.title('Contamination')
             plt.show()
+            return
 
         if event.key() == Qt.Key_O:
             plt.close()
             plt.imshow(self.spec.contamination + self.spec.science)
             plt.title('Original Data')
             plt.show()
+            return
 
         # todo: show the residual. raise main window to top or make it active at least (better).
         # add ability to add multiple plots to the same canvas
@@ -446,8 +483,6 @@ class Inspector:
         self.update_nisp_data_in_gui()
 
     def update_nisp_data_in_gui(self):
-        print('update drop-down menus')
-
         # display dither 1, detector 1 in single view
 
         dithers = list(self.exposures.keys())
@@ -470,8 +505,6 @@ class Inspector:
         self.single_detector_box.activated[int].connect(self.update_single_detector)
 
         self.boxes = False
-
-        print('updated')
 
     def update_single_dither(self, dither_index):
         self.single_current_dither = self.single_dither_box.itemData(dither_index)
