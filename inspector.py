@@ -30,7 +30,8 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QGraphicsView, QGraphics
                              QGridLayout, QWidget, QTabWidget, QMenu, QFileDialog,
                              QAction, QComboBox, QHBoxLayout, QGroupBox, QLabel,
                              QGraphicsItem, QLineEdit, QTableWidget, QTableWidgetItem,
-                             QGraphicsPixmapItem, QMessageBox)
+                             QGraphicsPixmapItem, QMessageBox, QVBoxLayout, QSpacerItem,
+                             QSizePolicy)
 
 from reader import DecontaminatedSpectraCollection
 from specbox import Rect
@@ -58,29 +59,20 @@ NISP_DETECTOR_MAP = {1: '11',
 DETECTOR_ID = {val: key for key, val in NISP_DETECTOR_MAP.items()}
 
 
-class ObjectSelectionArea(QGroupBox):
+class ObjectSelectionArea(QHBoxLayout):
 
     def __init__(self, *args):
         super().__init__(*args)
 
-        self.layout = QHBoxLayout()
-        self.layout.setContentsMargins(5, 0, 5, 5)
+        self.setContentsMargins(5, 9, 0, 9)
 
-        self.setLayout(self.layout)
-
-        self.setFlat(True)
-
-        selector_box = QGroupBox()
-
-        selector_box.setFlat(True)
-
-        selector_box.setMaximumWidth(450)
+        self.setSpacing(10)
 
         selector_layout = QHBoxLayout()
 
-        selector_layout.setContentsMargins(5, 5, 5, 5)
+        selector_layout.setContentsMargins(0, 0, 0, 0)
 
-        selector_box.setLayout(selector_layout)
+        selector_layout.setSpacing(10)
 
         # set up the dither selector and label
 
@@ -88,22 +80,23 @@ class ObjectSelectionArea(QGroupBox):
 
         detector_label, self.detector_selector = self.make_selector('detector')
 
-        selector_layout.addWidget(dither_label)
+        selector_layout.addSpacerItem(QSpacerItem(130, 10, QSizePolicy.Maximum, QSizePolicy.Maximum))
+        selector_layout.addWidget(dither_label, Qt.AlignCenter)
         selector_layout.addWidget(self.dither_selector)
-        selector_layout.addWidget(detector_label)
+        selector_layout.addSpacerItem(QSpacerItem(75, 10, QSizePolicy.Maximum, QSizePolicy.Maximum))
+        selector_layout.addWidget(detector_label, Qt.AlignCenter)
         selector_layout.addWidget(self.detector_selector)
 
         self.searchbox = QLineEdit()
 
-        self.layout.addWidget(selector_box, Qt.AlignLeft)
-
+        self.insertLayout(0, selector_layout)
         self.searchbox.setMaximumWidth(250)
-        self.searchbox.setMaximumWidth(200)
+        self.searchbox.setMinimumWidth(125)
         self.searchbox.setPlaceholderText('Search by ID')
 
-        self.layout.addStretch(1)
+        self.addStretch(1)
 
-        self.layout.addWidget(self.searchbox, Qt.AlignRight)
+        self.addWidget(self.searchbox, Qt.AlignRight)
 
         print('SelectionArea is created')
 
@@ -135,13 +128,15 @@ class ViewTab(QWidget):
         self.current_dither = 1
         self.boxes_visible = False
 
-        self._layout = QGridLayout()
+        self._layout = QVBoxLayout()
 
         self._layout.setContentsMargins(5, 0, 5, 5)
 
+        self._layout.setSpacing(0)
+
         self.selection_area = ObjectSelectionArea()
 
-        self._layout.addWidget(self.selection_area)
+        self._layout.insertLayout(0, self.selection_area)
 
         # create and add the view area
 
@@ -412,6 +407,8 @@ class Inspector:
         main.setCentralWidget(tabs)
 
         main.setWindowIcon(QIcon('./Euclid.png'))
+
+        main.setContentsMargins(0, 5, 0, 0)
 
         main.showMaximized()
 
