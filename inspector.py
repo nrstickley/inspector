@@ -16,6 +16,7 @@ General plan:
  * add the ability to to convert to physical flux values
  * Implement the info window for viewing x-y coords, RA, DEC, wavelengths of a specific spectrum, raw values of pixels,
    flux values of pixels
+ * in blank tabs, show a note about using the file menu or Ctrl+N to load exposures.
  """
 
 import sys
@@ -98,8 +99,6 @@ class ObjectSelectionArea(QHBoxLayout):
 
         self.addWidget(self.searchbox, Qt.AlignRight)
 
-        print('SelectionArea is created')
-
     @staticmethod
     def make_selector(name: 'str'):
         label = QLabel(f"{name}:")
@@ -109,8 +108,8 @@ class ObjectSelectionArea(QHBoxLayout):
         selector_box = QComboBox()
         selector_box.setStatusTip(f'Select a {name} to display')
         selector_box.setObjectName(name)
-        selector_box.setMinimumWidth(50)
-        selector_box.setMaximumWidth(100)
+        selector_box.setMinimumWidth(85)
+        selector_box.setMaximumWidth(85)
         selector_box.setEnabled(False)
 
         return label, selector_box
@@ -149,8 +148,6 @@ class ViewTab(QWidget):
         self._layout.addWidget(self.view)
 
         self.setLayout(self._layout)
-
-        print('ViewTab is created')
 
     def init_view(self):
         # display dither 1, detector 1 in single view
@@ -193,6 +190,8 @@ class ViewTab(QWidget):
         self.scene.addPixmap(pixmap)
 
         self.boxes_visible = False
+
+        self.inspector.rename_tab(self)
 
     def show_bounding_box(self, dither, detector, object_id):
         spec = self.inspector.collection.get_spectrum(dither, detector, object_id)
@@ -266,13 +265,19 @@ class Inspector:
 
         self.main, self.tabs = self.init_main()
 
-        self.view_tab = ViewTab(self)
+        self.view_tab = [ViewTab(self)]
 
-        self.tabs.addTab(self.view_tab, "Detector view")
+        self.tabs.addTab(self.view_tab[0], "view 0")
 
         self.tabs.setTabShape(QTabWidget.Triangular)
 
         self.tabs.setTabsClosable(True)
+
+        self.tabs.tabCloseRequested.connect(self.close_tab)
+
+        self.tabs.tabBarDoubleClicked.connect(self.new_view_tab)
+
+        self.tabs.setMovable(True)
 
         self.menu = self.init_menu()
 
@@ -338,7 +343,8 @@ class Inspector:
 
             # connect the search box
             if self.collection is not None:
-                self.view_tab.selection_area.searchbox.returnPressed.connect(inspector.view_tab.select_spectrum)
+                for view_tab in self.view_tab:
+                    view_tab.selection_area.searchbox.returnPressed.connect(view_tab.select_spectrum)
 
     def load_exposures(self):
         """Loads Background-subtracted NISP Exposures."""
@@ -379,7 +385,8 @@ class Inspector:
             for detector in NISP_DETECTOR_MAP:
                 self.exposures[dither][detector] = exposure[f'DET{NISP_DETECTOR_MAP[detector]}.SCI']
 
-        self.view_tab.init_view()
+        for view_tab in self.view_tab:
+            view_tab.init_view()
 
     def show_info(self):
         m = QMessageBox(0, 'Info Window Placeholder',
@@ -388,7 +395,27 @@ class Inspector:
                         QMessageBox.NoButton)
         m.setWindowFlag(Qt.Window, True)
         m.exec()
-        print('showed message')
+
+    def new_view_tab(self):
+        new_view_tab = ViewTab(inspector)
+        self.view_tab.append(new_view_tab)
+        self.tabs.addTab(new_view_tab, f'view {len(self.view_tab) - 1}')
+        if self.exposures is not None:
+            new_view_tab.init_view()
+            new_view_tab.selection_area.searchbox.returnPressed.connect(new_view_tab.select_spectrum)
+
+    def rename_tab(self, view_tab):
+        # find the index of the view_tab and then use that index to change the name of the tab
+        tab_index = self.tabs.indexOf(view_tab)
+        self.tabs.setTabText(tab_index, f'dither-{view_tab.current_dither} det-{view_tab.current_detector}')
+
+    def close_tab(self, tab_index):
+        item = self.tabs.widget(tab_index)
+        self.view_tab.remove(item)
+        self.tabs.removeTab(tab_index)
+
+        if self.tabs.count() == 0:
+            self.exit()
 
     def exit(self):
         print('shutting down')
