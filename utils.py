@@ -3,6 +3,8 @@ from scipy.signal import medfilt
 from math import erf, sqrt
 import numpy as np
 
+from PyQt5.QtGui import QImage, QPixmap
+
 
 c_AA = 2.99792458e18  # the speed of light in Angstroms per second
 
@@ -242,7 +244,7 @@ def verify_2d_numpy_array(arg):
 
 def bounding_indices(box1, box2):
     """
-    Computes the bounding indices of the region of overlap of two boxes.
+    Computes the bounding indices of the region of overlap of two boxes_visible.
     box1: A tuple of (left, bottom, width, height)
     box2: A tuple of (left, bottom, width, height)
     Returns: two tuples: (left1, bottom1, right1, top1), (left2, bottom2, right2, top2) which are the bounding
@@ -252,7 +254,7 @@ def bounding_indices(box1, box2):
     left1, bottom1, width1, height1 = box1
     left2, bottom2, width2, height2 = box2
 
-    # the offset between the corners of the two boxes is:
+    # the offset between the corners of the two boxes_visible is:
 
     x_offset = left1 - left2
     y_offset = bottom1 - bottom2
@@ -283,7 +285,7 @@ def bounding_indices(box1, box2):
     if boxes_intersect:
         return (left1, bottom1, right1, top1), (left2, bottom2, right2, top2)
     else:
-        # the boxes do not intersect.
+        # the boxes_visible do not intersect.
         return None, None
 
 
@@ -317,3 +319,31 @@ def apply_contaminant(contaminant_flux, total_contamination):
     can_left, can_bottom, can_right, can_top = canvas_boundaries
 
     canvas[can_bottom:can_top, can_left:can_right] += contam[contam_bottom:contam_top, contam_left:contam_right]
+
+
+def to_bytes(im, maxval=None):
+    """
+    Scales the input image to fit the dynamic range between 0 and 255, inclusive. Then returns
+    the array as an array of bytes (a string).
+    """
+    if maxval is None:
+        maxval = im.max()
+
+    data = (im - im.min()) / (maxval - im.min())
+    counts, bins = np.histogram(data.flatten(), bins=300)
+    scale_factor = 0.017 / bins[1 + counts.argmax()]
+    scaled = 2 * 350 * scale_factor * (np.arctan(1.1e6 * data.astype(np.float32) / maxval) / np.pi)
+    scaled -= np.percentile(scaled, 0.05)
+    counts, bins = np.histogram(scaled.flatten(), bins=300, range=(0, 300))
+    scale_factor2 = 44.0 / bins[1 + counts.argmax()]
+    scaled *= scale_factor2
+    #plt.hist(scaled.flatten(), bins=128, log=True, histtype='step')
+    clipped = np.clip(scaled, 0, 255)
+    return clipped.astype(np.uint8).flatten().tobytes()
+
+
+def np_to_pixmap(array, maxval):
+    height, width = array.shape
+    image_bytes = to_bytes(array, maxval)
+    image = QImage(image_bytes, width, height, width, QImage.Format_Grayscale8)
+    return QPixmap(image)

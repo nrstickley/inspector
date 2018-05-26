@@ -16,6 +16,7 @@ GRISM_POSITION_LABEL = 'Grism Position'
 EXPOSURE_ID_LABEL = 'Exposure ID'
 FIELD_ID_LABEL = 'Field ID'
 
+
 class DecontaminatedSpectrum:
     """
     A struct-like class for storing the decontamination products for a single spectrum.
@@ -467,6 +468,11 @@ class DecontaminatedSpectraCollection:
         with open(filename) as f:
             decontaminated_spectra_collection_filenames = json.load(f)
 
+        for f in decontaminated_spectra_collection_filenames:
+            full_name = os.path.join(dir_name, 'data', f)
+            if not h5py.is_hdf5(full_name):
+                raise TypeError(f'{f} is not a valid HDF5 file.')
+
         n_files = len(decontaminated_spectra_collection_filenames)
 
         loop = QEventLoop()
@@ -486,15 +492,14 @@ class DecontaminatedSpectraCollection:
             progress.setLabelText(status_message)
             progress.setValue(i)
             loop.processEvents()
-            print(status_message)
             full_name = os.path.join(dir_name, 'data', decontaminated_spectra_filename)
+
             self._load_hdf5(full_name)
+
             progress.setValue(i + 1)
             loop.processEvents()
 
         progress.close()
-
-        #loop.exec()
 
     def _load_hdf5(self, filename):
         """
@@ -505,6 +510,9 @@ class DecontaminatedSpectraCollection:
             filename: The fully-qualified name of an HDF5 file containing a DecontaminatedSpectraCollection for one
             NISP detector.
         """
+
+        if not h5py.is_hdf5(filename):
+            raise ValueError(f"{filename} is not a valid DecontaminatedSpectrumCollection file.")
 
         h5_file = h5py.File(filename, 'r')
 

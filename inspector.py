@@ -4,25 +4,20 @@ import sys
 import os
 import json
 
-import numpy as np
 from astropy.io import fits
-import matplotlib as mpl
 
-import matplotlib.pyplot as plt
-
-from PyQt5.QtCore import Qt, QRectF, QPointF
-from PyQt5.QtGui import QImage, QPixmap, QColor, QPen, QIcon
+from PyQt5.QtCore import Qt, QPointF
+from PyQt5.QtGui import QImage, QPixmap, QColor, QIcon
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QGraphicsView, QGraphicsScene,
-                             QGridLayout, QWidget, QGraphicsRectItem, QTabWidget,
-                             QMenu, QFileDialog, QAction, QComboBox, QHBoxLayout,
-                             QGroupBox, QLabel, QGraphicsTextItem, QGraphicsItem,
-                             QLineEdit, QTableWidget, QTableWidgetItem, QGraphicsPixmapItem)
+                             QGridLayout, QWidget, QTabWidget, QMenu, QFileDialog,
+                             QAction, QComboBox, QHBoxLayout, QGroupBox, QLabel,
+                             QGraphicsItem, QLineEdit, QTableWidget, QTableWidgetItem,
+                             QGraphicsPixmapItem, QMessageBox)
 
 from reader import DecontaminatedSpectraCollection
-
-
-red_pen = QPen(QColor('red'))
-green_pen = QPen(QColor('green'))
+from specbox import Rect
+from detector_view import View
+import utils
 
 
 NISP_DETECTOR_MAP = {1: '11',
@@ -42,495 +37,147 @@ NISP_DETECTOR_MAP = {1: '11',
                      15: '34',
                      16: '44'}
 
-DETECTOR_ID = {val:key for key, val in NISP_DETECTOR_MAP.items()}
+DETECTOR_ID = {val: key for key, val in NISP_DETECTOR_MAP.items()}
 
 
-def to_bytes(im, maxval=None):
-    """
-    Scales the input image to fit the dynamic range between 0 and 255, inclusive. Then returns
-    the array as an array of bytes (a string).
-    """
-    if maxval is None:
-        maxval = im.max()
-
-    data = (im - im.min()) / (maxval - im.min())
-    counts, bins = np.histogram(data.flatten(), bins=300)
-    scale_factor = 0.017 / bins[1 + counts.argmax()]
-    scaled = 2 * 350 * scale_factor * (np.arctan(1.1e6 * data.astype(np.float32) / maxval) / np.pi)
-    scaled -= np.percentile(scaled, 0.05)
-    counts, bins = np.histogram(scaled.flatten(), bins=300, range=(0, 300))
-    scale_factor2 = 44.0 / bins[1 + counts.argmax()]
-    scaled *= scale_factor2
-    #plt.hist(scaled.flatten(), bins=128, log=True, histtype='step')
-    clipped = np.clip(scaled, 0, 255)
-    return clipped.astype(np.uint8).flatten().tobytes()
-
-
-def np_to_pixmap(array, maxval):
-    height, width = array.shape
-    image_bytes = to_bytes(array, maxval)
-    image = QImage(image_bytes, width, height, width, QImage.Format_Grayscale8)
-    return QPixmap(image)
-
-
-class View(QGraphicsView):
-
-    def __init__(self, main):
-        super().__init__()
-        self._main = main
-        #self.setDragMode(QGraphicsView.ScrollHandDrag)
-        self.setDragMode(QGraphicsView.RubberBandDrag)
-
-        self._scale_factor = 1.0
-
-    def contextMenuEvent(self, event):
-
-        item = self.scene().itemAt(event.pos(), self.transform())  # This transform or the event.pos() seems to be the incorrect argument.
-
-        if issubclass(type(item), QGraphicsItem) and not isinstance(item, QGraphicsPixmapItem):
-            # TODO: forward the right-click to the item somehow
-            print("forward the click!")
-            return
-
-        menu = QMenu(self)
-        show_hide = 'Hide' if self._main.boxes else 'Show'
-        show_bounding = menu.addAction(show_hide + " bounding boxes", self._main.toggle_bounding_boxes)
-
-        if not self._main.active_detector_has_spectral_data():
-            show_bounding.setDisabled(True)
-
-        menu.exec(event.globalPos())
-
-    def keyPressEvent(self, event):
-
-        increment = 1.05
-
-        if event.key() == Qt.Key_Plus:
-            self._scale_factor *= increment
-            self.scale(increment, increment)
-            return
-
-        if event.key() == Qt.Key_Minus:
-            self._scale_factor /= increment
-            self.scale(1.0 / increment, 1.0 / increment)
-            return
-
-        if event.key() == Qt.Key_1:
-            self.scale(1.0 / self._scale_factor, 1.0 / self._scale_factor)
-            self._scale_factor = 1.0
-            return
-
-        self.scene().keyPressEvent(event)
-
-
-class Rect(QGraphicsRectItem):
-
-    inactive_opacity = 0.21  # the opacity of rectangles that are not in focus
+class ObjectSelectionArea(QGroupBox):
 
     def __init__(self, *args):
-        rect = QRectF(*args)
-        super().__init__(rect)
-        self.setOpacity(Rect.inactive_opacity)
-        self.setAcceptHoverEvents(True)
-        self.setFlag(QGraphicsItem.ItemIsSelectable)
-        self.setPen(green_pen)
+        super().__init__(*args)
 
-        self.pinned = False
-        self.label = None
-        self._spec = None
+        self.layout = QHBoxLayout()
 
-    @property
-    def spec(self):
-        return self._spec
+        self.setLayout(self.layout)
 
-    @spec.setter
-    def spec(self, spec):
-        self._spec = spec
-
-    def hoverEnterEvent(self, event):
-        self.setPen(red_pen)
-        self.setOpacity(1.0)
-
-    def hoverLeaveEvent(self, event):
-        if not self.pinned:
-            self.setPen(green_pen)
-            self.setOpacity(Rect.inactive_opacity)
-
-    def mousePressEvent(self, event: 'QGraphicsSceneMouseEvent'):
-        keys = event.modifiers()
-
-        if keys & Qt.CTRL:
-            self.grabKeyboard()
-        else:
-            self.handle_pinning(event)
-            self.grabKeyboard()
-
-    def handle_pinning(self, event):
-        if self.pinned:  # it's already pinned; unpin it
-            self.unpin()
-        else:  # it's not pinned; pin it
-            self.pin(event.scenePos())
-
-    def pin(self, label_pos=None):
-        if label_pos is not None:
-            self.label = QGraphicsTextItem(f"{self._spec.id}", parent=self)
-            self.label.setPos(label_pos)
-            self.label.setDefaultTextColor(QColor('red'))
-        else:
-            self.label = QGraphicsTextItem(f"{self._spec.id}")
-            self.label.setDefaultTextColor(QColor('red'))
-            self.scene().addItem(self.label)
-            self.label.setPos(self.scenePos())
-
-        self.setPen(red_pen)
-        self.setOpacity(1.0)
-        self.pinned = True
-
-    def unpin(self):
-        self.setPen(green_pen)
-        if self.label is not None:
-            self.scene().removeItem(self.label)
-            self.label = None
-        self.pinned = False
-
-    def keyPressEvent(self, event):
-
-        if event.key() == Qt.Key_Up or event.key() == Qt.Key_Down:
-            self.plot_column_sums()
-            return
-
-        if event.key() == Qt.Key_Right or event.key() == Qt.Key_Left:
-            self.plot_row_sums()
-            return
-
-        if event.key() == Qt.Key_S:
-            plt.close()
-            plt.imshow(self._spec.science)
-            plt.title('Decontaminated Spectrum')
-            plt.show()
-            return
-
-        if event.key() == Qt.Key_V:
-            plt.close()
-            plt.imshow(self._spec.variance)
-            plt.title('Variance')
-            plt.show()
-            return
-
-        if event.key() == Qt.Key_C:
-            plt.close()
-            plt.imshow(self._spec.contamination)
-            plt.title('Contamination')
-            plt.show()
-            return
-
-        if event.key() == Qt.Key_O:
-            plt.close()
-            plt.imshow(self.spec.contamination + self.spec.science)
-            plt.title('Original Data')
-            plt.show()
-            return
-
-        # todo: show the residual. raise main window to top or make it active at least (better).
-        # add ability to add multiple plots to the same canvas
-
-        if event.key() == Qt.Key_L:
-            print("Contaminants:")
-            print(self._spec.contaminants)
-
-    def contextMenuEvent(self, event):
-        menu = QMenu(self)
-
-        show_spectrum_info = menu.addAction("inspect in 'Spectrum View'", self._main.toggle_bounding_boxes)
-
-        plot_columns = QAction('Plot column sums', menu)
-
-        plot_columns = QAction('Load Exposures', menu)
-        plot_columns.setShortcut(Qt.Key_Up)
-        plot_columns.setStatusTip('Plot the sums of the columns of pixels in the 2D spectrum.')
-        plot_columns.triggered.connect(self.plot_culumn_sums)
-
-        menu.addAction(plot_columns)
-
-        menu.exec(event.globalPos())
-
-    def plot_column_sums(self):
-        self.plot_pixel_sums(0, 'Column')
-
-    def plot_row_sums(self):
-        self.plot_pixel_sums(1, 'Row')
-
-    def plot_pixel_sums(self, axis, label):
-        plt.close()
-        science = self.spec.science.sum(axis=axis)
-        contamination = self.spec.contamination.sum(axis=axis)
-        plt.plot(contamination, alpha=0.6, label='Contamination')
-        plt.plot(science + contamination, alpha=0.6, label='Original')
-        plt.plot(science, label='Decontaminated')
-        plt.title(f'Object ID: {self.spec.id}')
-        plt.xlabel(f'Pixel {label}')
-        plt.ylabel(f'{label} Sum')
-        plt.legend()
-        plt.show()
-
-    def show_contaminant_table(self):
-        contents = self.spec.contaminants
-        rows = len(contents)
-        columns = 2
-
-        table = QTableWidget(columns, rows, self.window())
-        table.setWindowFlag(Qt.Window, True)
-        table.setHorizontalHeaderLabels(['Object ID', 'Order'])
-        # https://evileg.com/en/post/236/
-        # http://doc.qt.io/qt-5/qtablewidget.html
-        table.show()
-
-
-class Inspector:
-    def __init__(self, app):
-
-        self.app = app
-
-        self.tabs = QTabWidget()
-
-        self.single_layout = QGridLayout()
-
-        self.single_layout.setContentsMargins(5, 10, 5, 5)
-
-        self.multi_layout = QGridLayout()
-
-        self.main = self.init_main()
-
-        self.menu = self.init_menu()
-
-        self.collection = None  # this will hold the DecontaminatedSpectraCollection
-        self.exposures = None   # this will hold the detectors as a nested map {dither: {detector: pixels}}
-
-        self.single_current_detector = 1
-        self.single_current_dither = 1
-
-        # create the dither selection drop-down menu
-
-        self.single_dither_box = QComboBox()
-        self.single_detector_box = QComboBox()
-        self.searchbox = QLineEdit()
-
-        self.make_detector_selection_box()
-
-        # create and add the main / single view area
-
-        self.single_view = View(self)
-
-        self.scene = QGraphicsScene()
-
-        self.single_view.setScene(self.scene)
-
-        self.single_layout.addWidget(self.single_view)
-
-        self.boxes = False
-
-
-    def init_main(self):
-        """Creates the main application window."""
-        main = QMainWindow()
-        main.setWindowTitle('Decontamination InSpector')
-        main.resize(1200, 950)
-
-        multi = QWidget()
-
-        single = QWidget()
-
-        single.setLayout(self.single_layout)
-
-        multi.setLayout(self.multi_layout)
-
-        self.tabs.addTab(single, "Detector view")
-
-        self.tabs.addTab(multi, "Spectrum view")
-
-        main.setCentralWidget(self.tabs)
-
-        main.setWindowIcon(QIcon('./Euclid.png'))
-
-        main.showMaximized()
-
-        return main
-
-    def init_menu(self):
-        """Creates the main menu."""
-        menu = self.main.menuBar()
-
-        file_menu = menu.addMenu('File')
-
-        load_nisp = QAction('Load Exposures', menu)
-        load_nisp.setShortcut('Ctrl+N')
-        load_nisp.setStatusTip('Load one or more NISP exposures, listed in a JSON file.')
-        load_nisp.triggered.connect(self.load_exposures)
-
-        file_menu.addAction(load_nisp)
-
-        load_decon = QAction('Load Spectra', menu)
-        load_decon.setShortcut('Ctrl+S')
-        load_decon.setStatusTip('Load one or more decontaminated spectra collections, listed in a JSON file.')
-        load_decon.triggered.connect(self.load_spectra)
-
-        file_menu.addAction(load_decon)
-
-        exit_app = QAction('Exit', menu)
-        exit_app.setStatusTip('Close the application.')
-        exit_app.triggered.connect(self.exit)
-
-        file_menu.addAction(exit_app)
-
-        return menu
-
-    def make_detector_selection_box(self):
-        top_region = QGroupBox('')
-
-        top_region.setFlat(True)
-
-        top_layout = QHBoxLayout()
-
-        top_region.setLayout(top_layout)
+        self.setFlat(True)
 
         selector_box = QGroupBox("Detector Selection")
 
         selector_box.setMaximumWidth(400)
 
-        top_layout.addWidget(selector_box, Qt.AlignLeft)
-
-        self.searchbox.setMaximumWidth(250)
-        self.searchbox.setMaximumWidth(200)
-        self.searchbox.setPlaceholderText('Search by ID')
-        self.searchbox.returnPressed.connect(self.select_spectrum)
-
-        top_layout.addStretch(1)
-
-        top_layout.addWidget(self.searchbox, Qt.AlignRight)
-
         selector_layout = QHBoxLayout()
 
         selector_box.setLayout(selector_layout)
 
-        dither_label = QLabel("dither:")
+        # set up the dither selector and label
 
-        dither_label.setAlignment(Qt.AlignRight)
+        dither_label, self.dither_selector = self.make_selector('dither')
 
-        detector_label = QLabel('detector:')
-
-        detector_label.setAlignment(Qt.AlignRight)
-
-        self.single_dither_box = QComboBox()
-        self.single_dither_box.setStatusTip('Select a dither to display')
-        self.single_dither_box.setObjectName('dither')
-        self.single_dither_box.setCurrentText('dither')
-        self.single_dither_box.setMinimumWidth(50)
-        self.single_dither_box.setMaximumWidth(100)
-        self.single_dither_box.setEnabled(False)
+        detector_label, self.detector_selector = self.make_selector('detector')
 
         selector_layout.addWidget(dither_label)
-        selector_layout.addWidget(self.single_dither_box)
-
-        # create and add the exposure drop-down menu
-
-        self.single_detector_box.setStatusTip('Select a detector to display')
-        self.single_detector_box.setObjectName('detector')
-        self.single_detector_box.setCurrentText('detector')
-        self.single_detector_box.setMinimumWidth(50)
-        self.single_detector_box.setMaximumWidth(100)
-        self.single_detector_box.setMaximumWidth(100)
-        self.single_detector_box.setEnabled(False)
-
+        selector_layout.addWidget(self.dither_selector)
         selector_layout.addWidget(detector_label)
-        selector_layout.addWidget(self.single_detector_box)
+        selector_layout.addWidget(self.detector_selector)
 
-        self.single_layout.addWidget(top_region)
+        self.searchbox = QLineEdit()
 
-    def load_spectra(self):
-        filename, _ = QFileDialog.getOpenFileName(self.main, caption='Open Decontaminated Spectra', filter='*.json')
+        self.layout.addWidget(selector_box, Qt.AlignLeft)
 
-        if os.path.isfile(filename):
-            print(f"Loading {filename}.")
-            self.app.setOverrideCursor(Qt.WaitCursor)
-            self.collection = DecontaminatedSpectraCollection(filename, self.main)
-            print(f"Finished loading {filename}.")
-            self.app.restoreOverrideCursor()
+        self.searchbox.setMaximumWidth(250)
+        self.searchbox.setMaximumWidth(200)
+        self.searchbox.setPlaceholderText('Search by ID')
 
-    def load_exposures(self):
-        """Loads Background-subtracted NISP Exposures."""
+        self.layout.addStretch(1)
 
-        nisp_exposures_json_file, _ = QFileDialog.getOpenFileName(self.main,
-                                                                  caption='Open NISP Exposures',
-                                                                  filter='*.json')
+        self.layout.addWidget(self.searchbox, Qt.AlignRight)
 
-        if not os.path.isfile(nisp_exposures_json_file):
-            return
+        print('SelectionArea is created')
 
-        with open(nisp_exposures_json_file) as f:
-            nisp_exposure_filenames = json.load(f)
+    @staticmethod
+    def make_selector(name: 'str'):
+        label = QLabel(f"{name}:")
 
-        self.exposures = {}  # {dither: {detector: image}}
+        label.setAlignment(Qt.AlignRight)
 
-        for exposure_name in nisp_exposure_filenames:
-            full_path = os.path.join(os.path.dirname(nisp_exposures_json_file), 'data', exposure_name)
-            print(f"loading {full_path}")
-            exposure = fits.open(full_path, memmap=True)
-            dither = exposure[0].header['DITHSEQ']
-            self.exposures[dither] = {}
-            for detector in NISP_DETECTOR_MAP:
-                self.exposures[dither][detector] = exposure[f'DET{NISP_DETECTOR_MAP[detector]}.SCI']
+        selector_box = QComboBox()
+        selector_box.setStatusTip(f'Select a {name} to display')
+        selector_box.setObjectName(name)
+        selector_box.setMinimumWidth(50)
+        selector_box.setMaximumWidth(100)
+        selector_box.setEnabled(False)
 
-        self.update_nisp_data_in_gui()
+        return label, selector_box
 
-    def update_nisp_data_in_gui(self):
+
+class ViewTab(QWidget):
+
+    def __init__(self, inspector, *args):
+
+        super().__init__(*args)
+
+        self.inspector = inspector
+
+        self.current_detector = 1
+        self.current_dither = 1
+        self.boxes_visible = False
+
+        self._layout = QGridLayout()
+
+        self._layout.setContentsMargins(5, 10, 5, 5)
+
+        self.selection_area = ObjectSelectionArea()
+
+        self._layout.addWidget(self.selection_area)
+
+        # create and add the view area
+
+        self.view = View(self)
+
+        self.scene = QGraphicsScene()
+
+        self.view.setScene(self.scene)
+
+        self._layout.addWidget(self.view)
+
+        self.setLayout(self._layout)
+
+        print('ViewTab is created')
+
+    def init_view(self):
         # display dither 1, detector 1 in single view
 
-        dithers = list(self.exposures.keys())
+        dithers = list(self.inspector.exposures.keys())
 
-        self.single_current_dither = dithers[0]
+        self.current_dither = dithers[0]
 
-        self.update_single()
+        self.update_view()
 
-        self.single_dither_box.setEnabled(True)
-        self.single_detector_box.setEnabled(True)
+        self.selection_area.dither_selector.setEnabled(True)
+        self.selection_area.detector_selector.setEnabled(True)
 
         for i, dither in enumerate(dithers):
-            self.single_dither_box.addItem(str(dither), dither)
+            self.selection_area.dither_selector.addItem(str(dither), dither)
 
-        self.single_dither_box.activated[int].connect(self.update_single_dither)
+        self.selection_area.dither_selector.activated[int].connect(self.change_dither)
 
         for detector in range(1, 17):
-            self.single_detector_box.addItem(str(detector), detector)
+            self.selection_area.detector_selector.addItem(str(detector), detector)
 
-        self.single_detector_box.activated[int].connect(self.update_single_detector)
+        self.selection_area.detector_selector.activated[int].connect(self.change_detector)
 
-        self.boxes = False
+        self.boxes_visible = False
 
-    def update_single_dither(self, dither_index):
-        self.single_current_dither = self.single_dither_box.itemData(dither_index)
-        self.update_single()
+    def change_dither(self, dither_index):
+        self.current_dither = self.selection_area.dither_selector.itemData(dither_index)
+        self.update_view()
 
-    def update_single_detector(self, detector_index):
-        self.single_current_detector = self.single_detector_box.itemData(detector_index)
-        self.update_single()
+    def change_detector(self, detector_index):
+        self.current_detector = self.selection_area.detector_selector.itemData(detector_index)
+        self.update_view()
 
-    def update_single(self):
-        data = self.exposures[self.single_current_dither][self.single_current_detector].data
+    def update_view(self):
+        data = self.inspector.exposures[self.current_dither][self.current_detector].data
 
-        pixmap = np_to_pixmap(data, data.max())
+        pixmap = utils.np_to_pixmap(data, data.max())
 
         self.scene.clear()
         self.scene.addPixmap(pixmap)
 
-        self.boxes = False
-
-    def exit(self):
-        print('shutting down')
-        self.main.close()
-        self.app.exit(0)
+        self.boxes_visible = False
 
     def show_bounding_box(self, dither, detector, object_id):
-        spec = self.collection.get_spectrum(dither, detector, object_id)
+        spec = self.inspector.collection.get_spectrum(dither, detector, object_id)
         return self.draw_spec_box(spec)
 
     def draw_spec_box(self, spec):
@@ -548,64 +195,206 @@ class Inspector:
             return rect, QPointF(left, top)
 
     def show_bounding_boxes(self, dither, detector):
-        for spec in self.collection.get_spectra(dither, detector):
+        for spec in self.inspector.collection.get_spectra(dither, detector):
             self.draw_spec_box(spec)
 
     def toggle_bounding_boxes(self):
-        if not self.boxes:
+        if not self.boxes_visible:
             self.show_boxes_in_view()
         else:
             self.remove_boxes_in_view()
 
     def show_boxes_in_view(self):
-        self.show_bounding_boxes(self.single_current_dither, self.single_current_detector)
-        self.boxes = True
+        self.show_bounding_boxes(self.current_dither, self.current_detector)
+        self.boxes_visible = True
 
     def remove_boxes_in_view(self):
         for item in self.scene.items():
             if isinstance(item, Rect) and not item.pinned:
                 self.scene.removeItem(item)
-        self.boxes = False
+        self.boxes_visible = False
 
     def active_detector_has_spectral_data(self):
-        if self.exposures is None or self.collection is None:
+        if self.inspector.exposures is None or self.inspector.collection is None:
             return False
 
-        dith = self.single_current_dither
-        det = self.single_current_detector
+        dith = self.current_dither
+        det = self.current_detector
 
-        return dith in self.collection.get_dithers() and det in self.collection.get_detectors(dith)
+        return dith in self.inspector.collection.get_dithers() and det in self.inspector.collection.get_detectors(dith)
 
     def select_spectrum(self):
-        object_id = self.searchbox.text()
+        object_id = self.selection_area.searchbox.text()
 
-        if self.collection is None or self.exposures is None:
+        if self.inspector.collection is None or self.inspector.exposures is None:
             return
 
-        spec = self.collection.get_spectrum(self.single_current_dither, self.single_current_detector, object_id)
+        spec = self.inspector.collection.get_spectrum(self.current_dither, self.current_detector, object_id)
 
         if spec is None:
-            self.searchbox.setText('Not found')
+            self.selection_area.searchbox.setText('Not found')
         else:
-            spec_box, pos = self.show_bounding_box(self.single_current_dither, self.single_current_detector, object_id)
+            spec_box, pos = self.show_bounding_box(self.current_dither, self.current_detector, object_id)
             spec_box.pin(pos)
+
+
+class Inspector:
+    def __init__(self, app):
+
+        self.app = app
+
+        self.collection = None  # this will hold the DecontaminatedSpectraCollection
+        self.exposures = None  # this will hold the detectors as a nested map {dither: {detector: pixels}}
+
+        self.main, self.tabs = self.init_main()
+
+        self.view_tab = ViewTab(self)
+
+        self.tabs.addTab(self.view_tab, "Detector view")
+
+        self.menu = self.init_menu()
+
+    def init_menu(self):
+        """Creates the main menu."""
+        menu = self.main.menuBar()
+
+        self.init_file_menu(menu)
+
+        self.init_windows_menu(menu)
+
+        return menu
+
+    def init_file_menu(self, main_menu):
+        file_menu = main_menu.addMenu('File')
+
+        load_nisp = QAction('Load Exposures', main_menu)
+        load_nisp.setShortcut('Ctrl+N')
+        load_nisp.setStatusTip('Load one or more NISP exposures, listed in a JSON file.')
+        load_nisp.triggered.connect(self.load_exposures)
+
+        file_menu.addAction(load_nisp)
+
+        load_decon = QAction('Load Spectra', main_menu)
+        load_decon.setShortcut('Ctrl+S')
+        load_decon.setStatusTip('Load one or more decontaminated spectra collections, listed in a JSON file.')
+        load_decon.triggered.connect(self.load_spectra)
+
+        file_menu.addAction(load_decon)
+
+        exit_app = QAction('Exit', main_menu)
+        exit_app.setStatusTip('Close the application.')
+        exit_app.triggered.connect(self.exit)
+
+        file_menu.addAction(exit_app)
+
+        return file_menu
+
+    def init_windows_menu(self, main_menu):
+        windows_menu = main_menu.addMenu('Windows')
+
+        show_info = QAction('Show Info Window', main_menu)
+        show_info.setShortcut('Ctrl+I')
+        show_info.triggered.connect(self.show_info)
+
+        windows_menu.addAction(show_info)
+
+        return windows_menu
+
+    def load_spectra(self):
+        filename, _ = QFileDialog.getOpenFileName(self.main, caption='Open Decontaminated Spectra', filter='*.json')
+
+        if os.path.isfile(filename):
+            print(f"Loading {filename}.")
+            self.app.setOverrideCursor(Qt.WaitCursor)
+            try:
+                self.collection = DecontaminatedSpectraCollection(filename, self.main)
+            except:
+                self.collection = None
+                message = QMessageBox(0, 'Error', 'Could not load the spectra. Verify that the file format is correct.')
+                message.exec()
+            self.app.restoreOverrideCursor()
+
+            # connect the search box
+            if self.collection is not None:
+                self.view_tab.selection_area.searchbox.returnPressed.connect(inspector.view_tab.select_spectrum)
+
+    def load_exposures(self):
+        """Loads Background-subtracted NISP Exposures."""
+
+        nisp_exposures_json_file, _ = QFileDialog.getOpenFileName(self.main,
+                                                                  caption='Open NISP Exposures',
+                                                                  filter='*.json')
+
+        if not os.path.isfile(nisp_exposures_json_file):
+            return
+
+        with open(nisp_exposures_json_file) as f:
+            nisp_exposure_filenames = json.load(f)
+
+        self.exposures = {}  # {dither: {detector: image}}
+
+        fits_magic = 'SIMPLE  =                    T'
+
+        for exposure_name in nisp_exposure_filenames:
+            full_path = os.path.join(os.path.dirname(nisp_exposures_json_file), 'data', exposure_name)
+            print(f"loading {full_path}")
+            try:
+                f = open(full_path)
+                magic = f.read(30)
+            except:
+                magic = ''
+            if magic != fits_magic:
+                message = QMessageBox(0, 'File Format Error', f'{exposure_name} is not a FITS file.')
+                message.exec()
+                self.exposures = None
+                f.close()
+                return
+            if not f.closed:
+                f.close()
+            exposure = fits.open(full_path, memmap=True)
+            dither = exposure[0].header['DITHSEQ']
+            self.exposures[dither] = {}
+            for detector in NISP_DETECTOR_MAP:
+                self.exposures[dither][detector] = exposure[f'DET{NISP_DETECTOR_MAP[detector]}.SCI']
+
+        self.view_tab.init_view()
+
+    def show_info(self):
+        m = QMessageBox(0, 'Info Window Placeholder',
+                        "This is where we can show things like x and y pixel coordinates, RA, DEC, "
+                        "additional info about the exposures and detectors, etc.",
+                        QMessageBox.NoButton)
+        m.setWindowFlag(Qt.Window, True)
+        m.exec()
+        print('showed message')
+
+    def exit(self):
+        print('shutting down')
+        self.main.close()
+        self.app.exit(0)
+
+    @staticmethod
+    def init_main():
+        """Creates the main application window."""
+        main = QMainWindow()
+        main.setWindowTitle('Decontamination InSpector')
+        main.resize(1200, 950)
+
+        tabs = QTabWidget()
+
+        main.setCentralWidget(tabs)
+
+        main.setWindowIcon(QIcon('./Euclid.png'))
+
+        main.showMaximized()
+
+        return main, tabs
 
 
 if __name__ == '__main__':
 
     app = QApplication(sys.argv)
 
-    mpl.use('Qt5Agg')
-
-    #plt.ion()
-
     inspector = Inspector(app)
 
     app.exec()
-
-# https://stackoverflow.com/questions/7140994/overlaping-qgraphicsitem-s-hover-events?utm_medium=organic&utm_source=google_rich_qa&utm_campaign=google_rich_qa
-
-# for context menu, we need to override a method of QGraphicsView, so we need to create a subclass of QGraphicsView
-# https://stackoverflow.com/questions/10766775/showing-a-popup-menu-on-qgraphicsscene-click-or-right-click?utm_medium=organic&utm_source=google_rich_qa&utm_campaign=google_rich_qa
-# signals and slots:
-# http://pyqt.sourceforge.net/Docs/PyQt5/signals_slots.html
