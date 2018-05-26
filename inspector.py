@@ -64,16 +64,21 @@ class ObjectSelectionArea(QGroupBox):
         super().__init__(*args)
 
         self.layout = QHBoxLayout()
+        self.layout.setContentsMargins(5, 0, 5, 5)
 
         self.setLayout(self.layout)
 
         self.setFlat(True)
 
-        selector_box = QGroupBox("Detector Selection")
+        selector_box = QGroupBox()
 
-        selector_box.setMaximumWidth(400)
+        selector_box.setFlat(True)
+
+        selector_box.setMaximumWidth(450)
 
         selector_layout = QHBoxLayout()
+
+        selector_layout.setContentsMargins(5, 5, 5, 5)
 
         selector_box.setLayout(selector_layout)
 
@@ -132,7 +137,7 @@ class ViewTab(QWidget):
 
         self._layout = QGridLayout()
 
-        self._layout.setContentsMargins(5, 10, 5, 5)
+        self._layout.setContentsMargins(5, 0, 5, 5)
 
         self.selection_area = ObjectSelectionArea()
 
@@ -269,6 +274,10 @@ class Inspector:
         self.view_tab = ViewTab(self)
 
         self.tabs.addTab(self.view_tab, "Detector view")
+
+        self.tabs.setTabShape(QTabWidget.Triangular)
+
+        self.tabs.setTabsClosable(True)
 
         self.menu = self.init_menu()
 
