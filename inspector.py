@@ -4,19 +4,44 @@
 General plan:
 
  * figure out how to forward right-click events to graphics items.
- * add an option along the lines of 'open in analysis tab'
+ * context menu items for spectra:
+    - show object in all dithers/detectors
+    - select object in all open views
+    - open in analysis tab
+    - show table of contaminants
+    - select all contaminants
+    - open Info Window
+    - show decontaminated spectrum
+    - show contamination
+    - show model
+    - show residual
+    - show variance
+    - plot horizontal profile
+    - plot vertical profile
  * make an analysis area class that can be inserted into new tabs
     - figure out how to embed MatPlotLib plots into widgets
     - make customizable plots that can be added to the analysis widget
  * put table of contaminants into a table widget
-    - the table entries should be clickable  (or right clickable), so you can view the contaminants
-    - in another tab or in the main view
+    - the table entries should be clickable (right clickable), so you can view the contaminants
+      in another tab or in the main view. Possibly add check boxes beside each contaminant to selectively
+      show each one in the current view.
  * add the ability to load location tables
  * add the ability to to compute wavelengths
+ * add ability to hide ALL bounding boxes, including selected ones
  * add the ability to to convert to physical flux values
- * Implement the info window for viewing x-y coords, RA, DEC, wavelengths of a specific spectrum, raw values of pixels,
-   flux values of pixels
  * in blank tabs, show a note about using the file menu or Ctrl+N to load exposures.
+
+ Refactoring:
+
+ * Move TabView and ObjectSelectionArea to a view_tab.py file
+
+ New classes to implement:
+
+ * AnalysisTab (and probably a few associated classes)
+ * ContaminantTable for displaying the list of contaminants
+ * InfoWindow for viewing x-y coords, RA, DEC, wavelengths of a specific spectrum, raw values of pixels,
+   flux values of pixels
+ * Plotter (probably)
  """
 
 import sys
