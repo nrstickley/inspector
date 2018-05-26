@@ -1,5 +1,23 @@
 #! /usr/bin/env python3
 
+"""
+General plan:
+
+ * figure out how to forward right-click events to graphics items.
+ * add an option along the lines of 'open in analysis tab'
+ * make an analysis area class that can be inserted into new tabs
+    - figure out how to embed MatPlotLib plots into widgets
+    - make customizable plots that can be added to the analysis widget
+ * put table of contaminants into a table widget
+    - the table entries should be clickable  (or right clickable), so you can view the contaminants
+    - in another tab or in the main view
+ * add the ability to load location tables
+ * add the ability to to compute wavelengths
+ * add the ability to to convert to physical flux values
+ * Implement the info window for viewing x-y coords, RA, DEC, wavelengths of a specific spectrum, raw values of pixels,
+   flux values of pixels
+ """
+
 import sys
 import os
 import json
