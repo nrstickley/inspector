@@ -19,7 +19,8 @@ General plan:
     - plot horizontal profile
     - plot vertical profile
  * make an analysis area class that can be inserted into new tabs
-    - figure out how to embed MatPlotLib plots into widgets
+    - example showing how to embed MatPlotLib into Qt Widget:
+          https://matplotlib.org/gallery/user_interfaces/embedding_in_qt_sgskip.html
     - make customizable plots that can be added to the analysis widget
  * put table of contaminants into a table widget
     - the table entries should be clickable (right clickable), so you can view the contaminants
