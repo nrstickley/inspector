@@ -1,6 +1,5 @@
 import matplotlib as mpl
 mpl.use('Qt5Agg')
-
 import matplotlib.pyplot as plt
 
 from PyQt5.QtCore import Qt, QRectF

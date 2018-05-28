@@ -1,4 +1,4 @@
-#! /usr/bin/env python3
+#! /usr/bin/env python3.6
 
 """
 General plan:
@@ -294,6 +294,42 @@ class Inspector:
         self.view_tab = [ViewTab(self)]
 
         self.tabs.addTab(self.view_tab[0], "view 0")
+
+        ##########  Demo  #############
+        import numpy as np
+        import matplotlib
+        matplotlib.use('Qt5Agg')
+        from matplotlib.backends.backend_qt4agg import FigureCanvas
+        from matplotlib.backends.backend_qt4agg import NavigationToolbar2QT as NavigationToolbar
+        from matplotlib import pyplot as plt
+
+        mpl_layout = QVBoxLayout()
+
+        fig = plt.figure()
+
+        x = np.arange(-10, 10, 0.1)
+
+        y = np.arctan(x)
+
+        plt.plot(x, y, label='arctan(x)')
+        plt.xlabel('the x-coordinate')
+        plt.ylabel('$f(x)$')
+        plt.title("This is an embedded MatPlotLib figure!")
+        plt.legend()
+
+        fig_canvas = FigureCanvas(fig)
+
+        box = QWidget()
+
+        toolbar = NavigationToolbar(fig_canvas, box)
+
+        mpl_layout.addWidget(toolbar)
+        mpl_layout.addWidget(fig_canvas)
+
+        box.setLayout(mpl_layout)
+
+        self.tabs.addTab(box, 'MatPlotLib test')
+        #######################
 
         self.tabs.setTabShape(QTabWidget.Triangular)
 
