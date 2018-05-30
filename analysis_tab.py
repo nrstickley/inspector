@@ -49,9 +49,15 @@ class AnalysisTab(QWidget):
 
         self.contents = list()
 
-        self.setLayout(QGridLayout())
+        layout = QGridLayout()
+        layout.setSpacing(0)
 
-        self.layout().addWidget(PlotView())
+        self.setLayout(layout)
+
+        self.layout().addWidget(PlotView(), 0, 0)
+        self.layout().addWidget(PlotView(), 0, 1)
+        self.layout().addWidget(PlotView(), 1, 0)
+        self.layout().addWidget(PlotView(), 1, 1)
 
     @property
     def object_id(self):

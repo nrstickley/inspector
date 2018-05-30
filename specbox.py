@@ -4,8 +4,8 @@ import matplotlib.pyplot as plt
 
 from PyQt5.QtCore import Qt, QRectF
 from PyQt5.QtGui import QColor, QPen
-from PyQt5.QtWidgets import (QGraphicsRectItem, QMenu, QAction, QGraphicsTextItem, QGraphicsItem,
-                             QTableWidget, QGraphicsSceneMouseEvent)
+from PyQt5.QtWidgets import (QWidget, QGraphicsRectItem, QMenu, QAction, QGraphicsTextItem, QGraphicsItem,
+                             QTableWidget, QGraphicsSceneMouseEvent, QDockWidget, QVBoxLayout)
 
 red_pen = QPen(QColor('red'))
 green_pen = QPen(QColor('green'))
@@ -26,6 +26,7 @@ class Rect(QGraphicsRectItem):
         self.pinned = False
         self.label = None
         self._spec = None
+        self._contam_table = None
 
     @property
     def spec(self):
@@ -46,12 +47,15 @@ class Rect(QGraphicsRectItem):
 
     def mousePressEvent(self, event: 'QGraphicsSceneMouseEvent'):
         keys = event.modifiers()
+        event.button()
 
         if keys & Qt.CTRL:
             self.grabKeyboard()
-        else:
+        elif event.button() == Qt.LeftButton:
             self.handle_pinning(event)
             self.grabKeyboard()
+        elif event.button() == Qt.RightButton:
+            self.handle_right_click(event.screenPos())
 
     def handle_pinning(self, event):
         if self.pinned:  # it's already pinned; unpin it
@@ -126,21 +130,32 @@ class Rect(QGraphicsRectItem):
             print("Contaminants:")
             print(self._spec.contaminants)
 
-    def contextMenuEvent(self, event):
-        menu = QMenu(self)
+    def handle_right_click(self, pos):
 
-        show_spectrum_info = menu.addAction("inspect in 'Spectrum View'", self._main.toggle_bounding_boxes)
+        print(f'handling right click for {self.spec.id}')
+        menu = QMenu()
+
+        open_in_analysis = menu.addAction("Open in analysis tab", self.open_analysis_tab)
+
+        show_info_window = menu.addAction("Show Info window", self.scene().views()[0]._main.inspector.show_info)
 
         plot_columns = QAction('Plot column sums', menu)
-
-        plot_columns = QAction('Load Exposures', menu)
-        plot_columns.setShortcut(Qt.Key_Up)
         plot_columns.setStatusTip('Plot the sums of the columns of pixels in the 2D spectrum.')
-        plot_columns.triggered.connect(self.plot_culumn_sums)
+        plot_columns.triggered.connect(self.plot_column_sums)
+
+        plot_rows = QAction('Plot row sums', menu)
+        plot_rows.setStatusTip('Plot the sums of the rows of pixels in the 2D spectrum.')
+        plot_rows.triggered.connect(self.plot_row_sums)
+
+        table_of_contaminants = QAction('Show table of contaminants')
+        table_of_contaminants.setStatusTip('Show a table containing information about the spectra that '
+                                           'contaminate this source.')
+        table_of_contaminants.triggered.connect(self.show_contaminant_table)
 
         menu.addAction(plot_columns)
-
-        menu.exec(event.globalPos())
+        menu.addAction(plot_rows)
+        menu.addAction(table_of_contaminants)
+        menu.exec(pos)
 
     def plot_column_sums(self):
         self.plot_pixel_sums(0, 'Column')
@@ -162,13 +177,16 @@ class Rect(QGraphicsRectItem):
         plt.show()
 
     def show_contaminant_table(self):
+        print('showing contaminants')
         contents = self.spec.contaminants
         rows = len(contents)
         columns = 2
-
-        table = QTableWidget(columns, rows, self.window())
-        table.setWindowFlag(Qt.Window, True)
-        table.setHorizontalHeaderLabels(['Object ID', 'Order'])
+        self._contam_table = QTableWidget(rows, columns)
+        self._contam_table.setWindowFlag(Qt.Window, True)
+        self._contam_table.setHorizontalHeaderLabels(['Object ID', 'Order'])
+        self._contam_table.show()
         # https://evileg.com/en/post/236/
         # http://doc.qt.io/qt-5/qtablewidget.html
-        table.show()
+
+    def open_analysis_tab(self):
+        print('this is where I would open an analysis tab.')

@@ -16,11 +16,9 @@ class View(QGraphicsView):
 
     def contextMenuEvent(self, event):
 
-        item = self.scene().itemAt(event.pos(), self.transform())  # This transform or the event.pos() seems to be the incorrect argument.
+        item = self.scene().itemAt(event.pos(), self.transform())
 
         if issubclass(type(item), QGraphicsItem) and not isinstance(item, QGraphicsPixmapItem):
-            # TODO: forward the right-click to the item somehow
-            print("forward the click!")
             return
 
         menu = QMenu(self)
@@ -47,8 +45,7 @@ class View(QGraphicsView):
             return
 
         if event.key() == Qt.Key_1:
-            self.scale(1.0 / self._scale_factor, 1.0 / self._scale_factor)
-            self._scale_factor = 1.0
+            self.resetTransform()
             return
 
         self.scene().keyPressEvent(event)
