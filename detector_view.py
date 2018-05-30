@@ -23,10 +23,13 @@ class View(QGraphicsView):
 
         menu = QMenu(self)
         show_hide = 'Hide' if self._main.boxes_visible else 'Show'
-        show_bounding = menu.addAction(show_hide + " bounding boxes", self._main.toggle_bounding_boxes)
+        show_hide_bounding = menu.addAction(show_hide + " bounding boxes", self._main.toggle_bounding_boxes)
+
+        if self._main.n_pinned_boxes() > 0:
+            remove_pinned = menu.addAction('Remove pinned boxes', self._main.remove_pinned_boxes)
 
         if not self._main.active_detector_has_spectral_data():
-            show_bounding.setDisabled(True)
+            show_hide_bounding.setDisabled(True)
 
         menu.exec(event.globalPos())
 

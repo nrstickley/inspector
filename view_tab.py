@@ -180,6 +180,22 @@ class ViewTab(QWidget):
                 self.scene.removeItem(item)
         self.boxes_visible = False
 
+    def remove_pinned_boxes(self):
+        for item in self.scene.items():
+            if isinstance(item, Rect) and item.pinned:
+                self.scene.removeItem(item)
+
+        if len(self.scene.items()) == 0:
+            self.boxes_visible = False
+
+    def n_pinned_boxes(self):
+        n = 0
+        for item in self.scene.items():
+            if isinstance(item, Rect) and item.pinned:
+                n += 1
+
+        return n
+
     def active_detector_has_spectral_data(self):
         if self.inspector.exposures is None or self.inspector.collection is None:
             return False
