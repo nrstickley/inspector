@@ -4,8 +4,12 @@ import matplotlib.pyplot as plt
 
 from PyQt5.QtCore import Qt, QRectF
 from PyQt5.QtGui import QColor, QPen
-from PyQt5.QtWidgets import (QWidget, QGraphicsRectItem, QMenu, QAction, QGraphicsTextItem, QGraphicsItem,
-                             QTableWidget, QGraphicsSceneMouseEvent, QDockWidget, QVBoxLayout)
+from PyQt5.QtWidgets import (QGraphicsRectItem, QMenu, QAction, QGraphicsTextItem, QGraphicsItem,
+                             QGraphicsSceneMouseEvent, QGraphicsView)
+
+from spec_table import SpecTable
+from plot_window import PlotWindow
+
 
 red_pen = QPen(QColor('red'))
 green_pen = QPen(QColor('green'))
@@ -35,6 +39,10 @@ class Rect(QGraphicsRectItem):
     @spec.setter
     def spec(self, spec):
         self._spec = spec
+
+    @property
+    def view(self):
+        return self.scene().views()[0]
 
     def hoverEnterEvent(self, event):
         self.setPen(red_pen)
@@ -127,8 +135,7 @@ class Rect(QGraphicsRectItem):
         # add ability to add multiple plots to the same canvas
 
         if event.key() == Qt.Key_L:
-            print("Contaminants:")
-            print(self._spec.contaminants)
+            self.show_contaminant_table()
 
     def handle_right_click(self, pos):
 
@@ -137,7 +144,7 @@ class Rect(QGraphicsRectItem):
 
         open_in_analysis = menu.addAction("Open in analysis tab", self.open_analysis_tab)
 
-        show_info_window = menu.addAction("Show Info window", self.scene().views()[0]._main.inspector.show_info)
+        show_info_window = menu.addAction("Show Info window", self.view._main.inspector.show_info)
 
         plot_columns = QAction('Plot column sums', menu)
         plot_columns.setStatusTip('Plot the sums of the columns of pixels in the 2D spectrum.')
@@ -156,6 +163,9 @@ class Rect(QGraphicsRectItem):
         menu.addAction(plot_rows)
         menu.addAction(table_of_contaminants)
         menu.exec(pos)
+
+    def contextMenuEvent(self, event: 'QGraphicsSceneContextMenuEvent'):
+        self.handle_right_click(event.screenPos())
 
     def plot_column_sums(self):
         self.plot_pixel_sums(0, 'Column')
@@ -176,17 +186,20 @@ class Rect(QGraphicsRectItem):
         plt.legend()
         plt.show()
 
+        #plot = PlotWindow(f'{self.spec.id} {label} Sum')
+        #plot.fig
+
     def show_contaminant_table(self):
-        print('showing contaminants')
         contents = self.spec.contaminants
         rows = len(contents)
         columns = 2
-        self._contam_table = QTableWidget(rows, columns)
+
+        self._contam_table = SpecTable(self.view, rows, columns)
+        self._contam_table.setWindowTitle('Contaminants')
+        self._contam_table.setWindowFlag(Qt.WindowStaysOnTopHint, True)
         self._contam_table.setWindowFlag(Qt.Window, True)
-        self._contam_table.setHorizontalHeaderLabels(['Object ID', 'Order'])
+        self._contam_table.add_spectra(contents)
         self._contam_table.show()
-        # https://evileg.com/en/post/236/
-        # http://doc.qt.io/qt-5/qtablewidget.html
 
     def open_analysis_tab(self):
         print('this is where I would open an analysis tab.')

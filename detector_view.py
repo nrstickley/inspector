@@ -1,8 +1,9 @@
 
 
 from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import (QGraphicsView, QGraphicsScene, QMenu, QAction, QGraphicsItem,
-                             QGraphicsPixmapItem)
+from PyQt5.QtWidgets import (QGraphicsView, QMenu,)
+
+from specbox import Rect
 
 
 class View(QGraphicsView):
@@ -16,9 +17,11 @@ class View(QGraphicsView):
 
     def contextMenuEvent(self, event):
 
-        item = self.scene().itemAt(event.pos(), self.transform())
+        #item = self.scene().itemAt(event.pos(), self.transform())
+        item = self.scene().itemAt(event.globalPos(), self.transform())
 
-        if issubclass(type(item), QGraphicsItem) and not isinstance(item, QGraphicsPixmapItem):
+        if isinstance(item, Rect):
+            print(f'no context menu because item is {type(item)}.')
             return
 
         menu = QMenu(self)
@@ -52,3 +55,7 @@ class View(QGraphicsView):
             return
 
         self.scene().keyPressEvent(event)
+
+    @property
+    def main(self):
+        return self._main

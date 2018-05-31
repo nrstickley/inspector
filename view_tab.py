@@ -208,13 +208,39 @@ class ViewTab(QWidget):
     def select_spectrum(self):
         object_id = self.selection_area.searchbox.text()
 
-        if self.inspector.collection is None or self.inspector.exposures is None:
-            return
-
-        spec = self.inspector.collection.get_spectrum(self.current_dither, self.current_detector, object_id)
+        spec = self.select_spectrum_by_id(object_id)
 
         if spec is None:
             self.selection_area.searchbox.setText('Not found')
-        else:
+
+    def select_spectrum_by_id(self, object_id):
+
+        if self.inspector.collection is None or self.inspector.exposures is None:
+            return None
+
+        spec = self.inspector.collection.get_spectrum(self.current_dither, self.current_detector, object_id)
+
+        if spec is not None:
+            # make sure that the spec is not already pinned
+
+            for pinned_item in self.get_pinned_spectra():
+                if pinned_item.spec.id == object_id:
+                    return None
+
+            # this point is only reached if the specified spectrum is not already pinned. Pin the spec
             spec_box, pos = self.show_bounding_box(self.current_dither, self.current_detector, object_id)
             spec_box.pin(pos)
+
+        return spec
+
+    def unselect_spectrum_by_id(self, object_id):
+        for item in self.get_pinned_spectra():
+            if item.spec.id == object_id:
+                self.scene.removeItem(item)
+
+    def get_pinned_spectra(self):
+        items = []
+        for item in self.scene.items():
+            if isinstance(item, Rect) and item.pinned:
+                items.append(item)
+        return items

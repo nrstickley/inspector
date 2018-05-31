@@ -95,9 +95,9 @@ class Inspector:
 
         self.tabs.addTab(self.view_tab[0], "view 0")
 
-        self.analysis_tab = [AnalysisTab(self, 'test-object')]
+        # self.analysis_tab = [AnalysisTab(self, 'test-object')]
 
-        self.tabs.addTab(self.analysis_tab[0], 'MatPlotLib test')
+        # self.tabs.addTab(self.analysis_tab[0], 'MatPlotLib test')
 
         self.tabs.setTabShape(QTabWidget.Triangular)
 

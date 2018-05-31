@@ -62,3 +62,44 @@ class AnalysisTab(QWidget):
     @property
     def object_id(self):
         return self._object_id
+
+
+def make_plot_window(title):
+    window = QWidget()
+    window.setWindowTitle(title)
+    window.setWindowFlag(Qt.WindowStaysOnTopHint, True)
+    window.setWindowFlag(Qt.Window, True)
+
+    layout = QVBoxLayout()
+    window.setLayout(layout)
+
+    fig = plt.figure()
+    fig.title(title)
+
+    figure_widget = FigureCanvas(fig)
+
+    toolbar = NavigationToolbar(figure_widget, window)
+
+    layout.addWidget(figure_widget)
+    layout.addWidget(toolbar)
+
+
+class PlotWindow(QWidget):
+    def __init__(self, title, *args):
+        super().__init__(*args)
+
+        self.setWindowTitle(title)
+        self.setWindowFlag(Qt.WindowStaysOnTopHint, True)
+        self.setWindowFlag(Qt.Window, True)
+
+        layout = QVBoxLayout()
+
+        self.fig = plt.figure()
+        self.fig.title(title)
+
+        self.figure_widget = FigureCanvas(self.fig)
+
+        toolbar = NavigationToolbar(self.figure_widget, self)
+
+        layout.addWidget(self.figure_widget)
+        layout.addWidget(toolbar)
