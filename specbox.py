@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from PyQt5.QtCore import Qt, QRectF
 from PyQt5.QtGui import QColor, QPen
 from PyQt5.QtWidgets import (QGraphicsRectItem, QMenu, QAction, QGraphicsTextItem, QGraphicsItem,
-                             QGraphicsSceneMouseEvent, QGraphicsView)
+                             QGraphicsSceneMouseEvent, QApplication)
 
 from spec_table import SpecTable
 from plot_window import PlotWindow
@@ -111,10 +111,7 @@ class Rect(QGraphicsRectItem):
             return
 
         if event.key() == Qt.Key_V:
-            plt.close()
-            plt.imshow(self._spec.variance)
-            plt.title('Variance')
-            plt.show()
+            self.show_variance()
             return
 
         if event.key() == Qt.Key_C:
@@ -138,13 +135,12 @@ class Rect(QGraphicsRectItem):
             self.show_contaminant_table()
 
     def handle_right_click(self, pos):
-
-        print(f'handling right click for {self.spec.id}')
         menu = QMenu()
 
-        open_in_analysis = menu.addAction("Open in analysis tab", self.open_analysis_tab)
-
-        show_info_window = menu.addAction("Show Info window", self.view._main.inspector.show_info)
+        table_of_contaminants = QAction('Show table of contaminants')
+        table_of_contaminants.setStatusTip('Show a table containing information about the spectra that '
+                                           'contaminate this source.')
+        table_of_contaminants.triggered.connect(self.show_contaminant_table)
 
         plot_columns = QAction('Plot column sums', menu)
         plot_columns.setStatusTip('Plot the sums of the columns of pixels in the 2D spectrum.')
@@ -154,14 +150,15 @@ class Rect(QGraphicsRectItem):
         plot_rows.setStatusTip('Plot the sums of the rows of pixels in the 2D spectrum.')
         plot_rows.triggered.connect(self.plot_row_sums)
 
-        table_of_contaminants = QAction('Show table of contaminants')
-        table_of_contaminants.setStatusTip('Show a table containing information about the spectra that '
-                                           'contaminate this source.')
-        table_of_contaminants.triggered.connect(self.show_contaminant_table)
+        menu.addAction("Open in analysis tab", self.open_analysis_tab)
+        menu.addAction(f"Open all spectra of object {self.spec.id}", self.open_all_spectra)
+        menu.addAction("Show Info window", self.view.main.inspector.show_info)
+        menu.addAction(table_of_contaminants)
 
+        menu.addSection('Plots')
         menu.addAction(plot_columns)
         menu.addAction(plot_rows)
-        menu.addAction(table_of_contaminants)
+
         menu.exec(pos)
 
     def contextMenuEvent(self, event: 'QGraphicsSceneContextMenuEvent'):
@@ -174,7 +171,10 @@ class Rect(QGraphicsRectItem):
         self.plot_pixel_sums(1, 'Row')
 
     def plot_pixel_sums(self, axis, label):
-        plt.close()
+
+        plot = PlotWindow(f'{self.spec.id} {label} Sum')
+
+        plt.sca(plot.axis)
         science = self.spec.science.sum(axis=axis)
         contamination = self.spec.contamination.sum(axis=axis)
         plt.plot(contamination, alpha=0.6, label='Contamination')
@@ -184,10 +184,27 @@ class Rect(QGraphicsRectItem):
         plt.xlabel(f'Pixel {label}')
         plt.ylabel(f'{label} Sum')
         plt.legend()
-        plt.show()
+        plt.draw()
+        plot.show()
+        plot.adjustSize()
+        plt.close()
 
-        #plot = PlotWindow(f'{self.spec.id} {label} Sum')
-        #plot.fig
+    def show_variance(self):
+        title = f'Variance of {self.spec.id}'
+
+        plot = PlotWindow(title)
+
+        plt.sca(plot.axis)
+        plt.imshow(self.spec.variance)
+        #plt.colorbar()
+        plt.subplots_adjust(top=0.985, bottom=0.025, left=0.025, right=0.985)
+        plt.draw()
+        plot.show()
+        geom = QApplication.desktop().geometry()
+        geom.setWidth(int(0.95 * geom.width()))
+        geom.setHeight(int(0.95 * geom.height()))
+        plot.setGeometry(geom)
+        plt.close()
 
     def show_contaminant_table(self):
         contents = self.spec.contaminants
@@ -203,3 +220,6 @@ class Rect(QGraphicsRectItem):
 
     def open_analysis_tab(self):
         print('this is where I would open an analysis tab.')
+
+    def open_all_spectra(self):
+        print(f'this will open all spectra of {self.spec.id}')

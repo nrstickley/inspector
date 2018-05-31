@@ -4,8 +4,8 @@ import matplotlib
 
 matplotlib.use('Qt5Agg')
 
-from matplotlib.backends.backend_qt4agg import FigureCanvas
-from matplotlib.backends.backend_qt4agg import NavigationToolbar2QT as NavigationToolbar
+from matplotlib.backends.backend_qt5agg import FigureCanvas
+from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 from matplotlib import pyplot as plt
 
 
@@ -16,11 +16,14 @@ class PlotWindow(QWidget):
         self.setWindowTitle(title)
         self.setWindowFlag(Qt.WindowStaysOnTopHint, True)
         self.setWindowFlag(Qt.Window, True)
+        self.setContentsMargins(0, 0, 0, 0)
 
         layout = QVBoxLayout()
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
 
-        self.fig = plt.figure()
-        self.fig.title(title)
+        self.fig, self.axis = plt.subplots()
+        self.axis.set_title(title)
 
         self.figure_widget = FigureCanvas(self.fig)
 
@@ -28,3 +31,5 @@ class PlotWindow(QWidget):
 
         layout.addWidget(self.figure_widget)
         layout.addWidget(toolbar)
+
+        self.setLayout(layout)

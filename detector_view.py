@@ -17,11 +17,9 @@ class View(QGraphicsView):
 
     def contextMenuEvent(self, event):
 
-        #item = self.scene().itemAt(event.pos(), self.transform())
         item = self.scene().itemAt(event.globalPos(), self.transform())
 
-        if isinstance(item, Rect):
-            print(f'no context menu because item is {type(item)}.')
+        if isinstance(item, Rect) and item.contains(event.pos()):
             return
 
         menu = QMenu(self)
@@ -29,7 +27,7 @@ class View(QGraphicsView):
         show_hide_bounding = menu.addAction(show_hide + " bounding boxes", self._main.toggle_bounding_boxes)
 
         if self._main.n_pinned_boxes() > 0:
-            remove_pinned = menu.addAction('Remove pinned boxes', self._main.remove_pinned_boxes)
+            menu.addAction('Remove pinned boxes', self._main.remove_pinned_boxes)
 
         if not self._main.active_detector_has_spectral_data():
             show_hide_bounding.setDisabled(True)

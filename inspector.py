@@ -3,9 +3,8 @@
 """
 General plan:
 
- * figure out how to forward right-click events to graphics items.
  * context menu items for spectra:
-    - show object in all dithers/detectors
+    - Open all spectra of object
     - select object in all open views
     - open in analysis tab
     - show table of contaminants
@@ -22,13 +21,8 @@ General plan:
     - example showing how to embed MatPlotLib into Qt Widget:
           https://matplotlib.org/gallery/user_interfaces/embedding_in_qt_sgskip.html
     - make customizable plots that can be added to the analysis widget
- * put table of contaminants into a table widget
-    - the table entries should be clickable (right clickable), so you can view the contaminants
-      in another tab or in the main view. Possibly add check boxes beside each contaminant to selectively
-      show each one in the current view.
  * add the ability to load location tables
  * add the ability to to compute wavelengths
- * add ability to hide ALL bounding boxes, including selected ones
  * add the ability to to convert to physical flux values
  * in blank tabs, show a note about using the file menu or Ctrl+N to load exposures.
 
