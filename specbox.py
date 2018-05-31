@@ -1,3 +1,4 @@
+import numpy as np
 import matplotlib as mpl
 mpl.use('Qt5Agg')
 import matplotlib.pyplot as plt
@@ -9,6 +10,11 @@ from PyQt5.QtWidgets import (QGraphicsRectItem, QMenu, QAction, QGraphicsTextIte
 
 from spec_table import SpecTable
 from plot_window import PlotWindow
+
+
+flag = {"ZERO": np.uint32(2**18),     # zeroth-order: bit 18
+        "MISSING": np.uint32(2**19),  # missing data: bit 19
+        "SIGCONT": np.uint32(2**20)}  # significantly contaminated; contamination flux is > 10% of source flux: bit 20
 
 
 red_pen = QPen(QColor('red'))
@@ -30,7 +36,24 @@ class Rect(QGraphicsRectItem):
         self.pinned = False
         self.label = None
         self._spec = None
+        self._model = None
         self._contam_table = None
+
+        self._key_bindings = {Qt.Key_Up: self.plot_column_sums,
+                              Qt.Key_Down: self.plot_column_sums,
+                              Qt.Key_Right: self.plot_row_sums,
+                              Qt.Key_Left: self.plot_row_sums,
+                              Qt.Key_S: self.show_decontaminated,
+                              Qt.Key_D: self.show_decontaminated,
+                              Qt.Key_V: self.show_variance,
+                              Qt.Key_C: self.show_contamination,
+                              Qt.Key_L: self.show_contaminant_table,
+                              Qt.Key_T: self.show_contaminant_table,
+                              Qt.Key_0: self.show_zeroth_orders,
+                              Qt.Key_Z: self.show_zeroth_orders,
+                              Qt.Key_R: self.show_residual,
+                              Qt.Key_O: self.show_original,
+                              Qt.Key_A: self.show_all_layers}
 
     @property
     def spec(self):
@@ -39,6 +62,14 @@ class Rect(QGraphicsRectItem):
     @spec.setter
     def spec(self, spec):
         self._spec = spec
+
+    @property
+    def model(self):
+        return self._model
+
+    @model.setter
+    def model(self, model):
+        self._model = model
 
     @property
     def view(self):
@@ -95,44 +126,43 @@ class Rect(QGraphicsRectItem):
 
     def keyPressEvent(self, event):
 
-        if event.key() == Qt.Key_Up or event.key() == Qt.Key_Down:
-            self.plot_column_sums()
-            return
+        # if event.key() == Qt.Key_Up or event.key() == Qt.Key_Down:
+        #     self.plot_column_sums()
+        #     return
+        #
+        # if event.key() == Qt.Key_Right or event.key() == Qt.Key_Left:
+        #     self.plot_row_sums()
+        #     return
+        #
+        # if event.key() == Qt.Key_S:
+        #     self.show_decontaminated()
+        #     return
+        #
+        # if event.key() == Qt.Key_V:
+        #     self.show_variance()
+        #     return
+        #
+        # if event.key() == Qt.Key_C:
+        #     self.show_contamination()
+        #     return
+        #
+        # if event.key() == Qt.Key_O:
+        #     self.show_original()
+        #     return
+        #
+        # if event.key() == Qt.Key_R:
+        #     self.show_residual()
+        #     return
+        #
+        # if event.key() == Qt.Key_Z or event.key() == Qt.Key_0:
+        #     self.show_zeroth_orders()
+        #     return
+        #
+        # if event.key() == Qt.Key_L or event.key() == Qt.Key_T:
+        #     self.show_contaminant_table()
 
-        if event.key() == Qt.Key_Right or event.key() == Qt.Key_Left:
-            self.plot_row_sums()
-            return
-
-        if event.key() == Qt.Key_S:
-            plt.close()
-            plt.imshow(self._spec.science)
-            plt.title('Decontaminated Spectrum')
-            plt.show()
-            return
-
-        if event.key() == Qt.Key_V:
-            self.show_variance()
-            return
-
-        if event.key() == Qt.Key_C:
-            plt.close()
-            plt.imshow(self._spec.contamination)
-            plt.title('Contamination')
-            plt.show()
-            return
-
-        if event.key() == Qt.Key_O:
-            plt.close()
-            plt.imshow(self.spec.contamination + self.spec.science)
-            plt.title('Original Data')
-            plt.show()
-            return
-
-        # todo: show the residual. raise main window to top or make it active at least (better).
-        # add ability to add multiple plots to the same canvas
-
-        if event.key() == Qt.Key_L:
-            self.show_contaminant_table()
+        if event.key() in self._key_bindings:
+            self._key_bindings[event.key()]()
 
     def handle_right_click(self, pos):
         menu = QMenu()
@@ -156,8 +186,16 @@ class Rect(QGraphicsRectItem):
         menu.addAction(table_of_contaminants)
 
         menu.addSection('Plots')
+
         menu.addAction(plot_columns)
         menu.addAction(plot_rows)
+        menu.addAction("Show decontaminated spectrum", self.show_decontaminated)
+        menu.addAction("Show original spectrum", self.show_original)
+        menu.addAction("Show contamination", self.show_contamination)
+        menu.addAction("Show decontaminated variance", self.show_variance)
+        menu.addAction("Show zeroth-order positions", self.show_zeroth_orders)
+        menu.addAction("Show residual", self.show_residual)
+        menu.addAction("Show all layers", self.show_all_layers)
 
         menu.exec(pos)
 
@@ -191,19 +229,91 @@ class Rect(QGraphicsRectItem):
 
     def show_variance(self):
         title = f'Variance of {self.spec.id}'
+        self.show_spec_layer(title, self.spec.variance)
 
+    def show_decontaminated(self):
+        title = f'Decontaminated Spectrum of {self.spec.id}'
+        self.show_spec_layer(title, self.spec.science)
+
+    def show_contamination(self):
+        title = f'Contamination of {self.spec.id}'
+        self.show_spec_layer(title, self.spec.contamination)
+
+    def show_zeroth_orders(self):
+        title = f'Zeroth-order contamination regions of {self.spec.id}'
+        data = (flag['ZERO'] & self.spec.mask) == flag['ZERO']
+        self.show_spec_layer(title, data)
+
+    def show_original(self):
+        title = f'{self.spec.id} before decontamination'
+        self.show_spec_layer(title, self.spec.contamination + self.spec.science)
+
+    def show_residual(self):
+        if self.model is not None:
+            title = f"residual spectrum of {self.spec.id}"
+            self.show_spec_layer(title, self.spec.science - self.model)
+
+    def show_spec_layer(self, title, data):
         plot = PlotWindow(title)
 
         plt.sca(plot.axis)
-        plt.imshow(self.spec.variance)
-        #plt.colorbar()
-        plt.subplots_adjust(top=0.985, bottom=0.025, left=0.025, right=0.985)
+        plt.imshow(data)
+        plt.subplots_adjust(top=0.975, bottom=0.025, left=0.025, right=0.975)
         plt.draw()
         plot.show()
-        geom = QApplication.desktop().geometry()
-        geom.setWidth(int(0.95 * geom.width()))
-        geom.setHeight(int(0.95 * geom.height()))
-        plot.setGeometry(geom)
+
+        padding = 32
+
+        display = QApplication.desktop()
+        current_screen = display.screenNumber(self.view)
+        geom = display.screenGeometry(current_screen)
+        width = geom.width() - 2 * padding
+        height = geom.height() - 2 * padding
+        plot.setGeometry(geom.left() + padding, geom.top() + padding, width, height)
+        plt.close()
+
+    def show_all_layers(self):
+        title = f'All Layers of {self.spec.id}'
+        plot = PlotWindow(title, shape=(5, 1))
+
+        plt.sca(plot.axis[0])
+        plt.imshow(self.spec.contamination + self.spec.science)
+        plt.title('Original')
+        plt.draw()
+
+        plt.sca(plot.axis[1])
+        plt.imshow(self.spec.science)
+        plt.title('Decontaminated')
+        plt.draw()
+
+        plt.sca(plot.axis[2])
+        plt.imshow(self.spec.contamination)
+        plt.title('Contamination')
+        plt.draw()
+
+        plt.sca(plot.axis[3])
+        plt.imshow(self.spec.variance)
+        plt.title('Variance')
+        plt.draw()
+
+        plt.sca(plot.axis[4])
+        data = (flag['ZERO'] & self.spec.mask) == flag['ZERO']
+        plt.imshow(data)
+        plt.title('Zeroth Orders')
+        plt.draw()
+
+        plt.subplots_adjust(top=0.975, bottom=0.025, left=0.025, right=0.975)
+        plt.draw()
+        plot.show()
+
+        padding = 50
+
+        display = QApplication.desktop()
+        current_screen = display.screenNumber(self.view)
+        geom = display.screenGeometry(current_screen)
+        width = geom.width() - 2 * padding
+        height = geom.height() - 2 * padding
+        plot.setGeometry(geom.left() + padding, geom.top() + padding, width, height)
         plt.close()
 
     def show_contaminant_table(self):

@@ -1,7 +1,7 @@
 import numpy as np
 
 from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem
+from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem, QApplication
 
 
 class SpecTable(QTableWidget):
@@ -43,6 +43,26 @@ class SpecTable(QTableWidget):
 
         self.setItem(row_index, 0, id_item)
         self.setItem(row_index, 1, order_item)
+
+        padding = 32
+
+        width = self.verticalHeader().width() + self.columnCount() * self.columnWidth(0) + 8
+        height = self.horizontalHeader().height() + self.rowCount() * self.rowHeight(0) + 8
+
+        display = QApplication.desktop()
+
+        cursor_x = display.cursor().pos().x()
+        cursor_y = display.cursor().pos().y()
+
+        current_screen = display.screenNumber(self.view)
+
+        geom = display.screenGeometry(current_screen)
+
+        screen_height = geom.height()
+
+        height = min(screen_height - 2 * padding, height)
+
+        self.setGeometry(cursor_x - padding, cursor_y, width, height)
 
     def handle_activated_cell(self, i , j):
 

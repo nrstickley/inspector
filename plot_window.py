@@ -10,7 +10,7 @@ from matplotlib import pyplot as plt
 
 
 class PlotWindow(QWidget):
-    def __init__(self, title, *args):
+    def __init__(self, title, shape=None, *args):
         super().__init__(*args)
 
         self.setWindowTitle(title)
@@ -22,8 +22,15 @@ class PlotWindow(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
-        self.fig, self.axis = plt.subplots()
-        self.axis.set_title(title)
+        self.title = title
+
+        if shape is None:
+            self.fig, self.axis = plt.subplots()
+            self.axis.set_title(self.title)
+        else:
+            rows, columns = shape
+            self.fig, self.axis = plt.subplots(rows, columns)
+            self.fig.suptitle(title)
 
         self.figure_widget = FigureCanvas(self.fig)
 
