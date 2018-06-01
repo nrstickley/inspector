@@ -328,7 +328,9 @@ class Rect(QGraphicsRectItem):
         self._contam_table.show()
 
     def open_analysis_tab(self):
-        print('this is where I would open an analysis tab.')
+        view_tab = self.view.main
+        inspector = view_tab.inspector
+        inspector.new_analysis_tab(view_tab.current_dither, view_tab.current_detector, self.spec.id)
 
     def open_all_spectra(self):
         view_tab = self.view.main

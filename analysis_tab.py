@@ -7,10 +7,14 @@ from PyQt5.QtWidgets import QWidget, QVBoxLayout, QMdiArea, QMenuBar, QAction, Q
 from plot_window import PlotWindow
 
 class AnalysisTab(QWidget):
-    def __init__(self, inspector, object_id, *args):
+    def __init__(self, inspector, dither, detector, object_id, *args):
         super().__init__(*args)
 
         self._inspector = inspector
+
+        self._dither = dither
+
+        self._detector = detector
 
         self._object_id = object_id
 
@@ -28,14 +32,14 @@ class AnalysisTab(QWidget):
         self.mdi = QMdiArea(self)
 
         ##########
-        x = np.arange(-10, 10, 0.1)
-        y = np.arctan(x)
 
-        plot = PlotWindow('a plot')
+        spec = inspector.collection.get_spectrum(dither, detector, object_id)
 
-        plot.axis.plot(x, y)
+        plot = PlotWindow(f'dither-{dither}, detector-{detector}, object-{object_id}')
 
-        sub_window = self.mdi.addSubWindow(plot) #, Qt.FramelessWindowHint)
+        plot.axis.imshow(spec.science)
+
+        sub_window = self.mdi.addSubWindow(plot)
 
         ##########
 
@@ -50,6 +54,14 @@ class AnalysisTab(QWidget):
     @property
     def object_id(self):
         return self._object_id
+
+    @property
+    def dither(self):
+        return self._dither
+
+    @property
+    def detector(self):
+        return self._detector
 
     def init_menu(self):
         menubar = QMenuBar(self)

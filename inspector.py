@@ -73,9 +73,7 @@ class Inspector:
 
         self.tabs.addTab(self.view_tab[0], "view 0")
 
-        self.analysis_tab = [AnalysisTab(self, 'test-object')]
-
-        self.tabs.addTab(self.analysis_tab[0], 'analysis-tab test')
+        self.analysis_tab = []
 
         self.tabs.setTabShape(QTabWidget.Triangular)
 
@@ -232,7 +230,9 @@ class Inspector:
     def new_view_tab(self, dither=None, detector=None):
         new_view_tab = ViewTab(inspector)
         self.view_tab.append(new_view_tab)
-        self.tabs.addTab(new_view_tab, f'view {len(self.view_tab) - 1}')
+        index = self.tabs.addTab(new_view_tab, f'view {len(self.view_tab) - 1}')
+        self.tabs.setCurrentIndex(index)
+
         if self.exposures is not None:
             new_view_tab.init_view()
             new_view_tab.selection_area.searchbox.returnPressed.connect(new_view_tab.select_spectrum)
@@ -241,6 +241,12 @@ class Inspector:
             new_view_tab.change_dither(dither - 1)
             new_view_tab.change_detector(detector - 1)
             self.rename_tab(new_view_tab)
+
+    def new_analysis_tab(self, dither, detector, object_id):
+        tab = AnalysisTab(self, dither, detector, object_id)
+        self.analysis_tab.append(tab)
+        index = self.tabs.addTab(tab, f'{dither}.{detector}.{object_id}')
+        self.tabs.setCurrentIndex(index)
 
     def rename_tab(self, view_tab):
         # find the index of the view_tab and then use that index to change the name of the tab
