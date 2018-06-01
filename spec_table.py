@@ -84,3 +84,8 @@ class SpecTable(QTableWidget):
             if order == 1:
                 self.view.main.select_spectrum_by_id(object_id)
 
+    def keyPressEvent(self, event):
+
+        if event.key() == Qt.Key_Q or event.key() == Qt.Key_Escape:
+            self.close()
+

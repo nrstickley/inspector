@@ -40,3 +40,8 @@ class PlotWindow(QWidget):
         layout.addWidget(toolbar)
 
         self.setLayout(layout)
+
+    def keyPressEvent(self, event):
+
+        if event.key() == Qt.Key_Q or event.key() == Qt.Key_Escape:
+            self.close()
