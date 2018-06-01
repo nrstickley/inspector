@@ -156,6 +156,13 @@ class ViewTab(QWidget):
 
             rect.spec = spec
 
+            model = self.inspector.collection.get_model(self.current_dither,
+                                                        self.current_detector,
+                                                        spec.id, order=1)
+
+            if model is not None:
+                rect.model = model.pixels
+
             self.scene.addItem(rect)
 
             return rect, QPointF(left, top)

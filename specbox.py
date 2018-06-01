@@ -39,21 +39,22 @@ class Rect(QGraphicsRectItem):
         self._model = None
         self._contam_table = None
 
-        self._key_bindings = {Qt.Key_Up: self.plot_column_sums,
+        self._key_bindings = {Qt.Key_Up:   self.plot_column_sums,
                               Qt.Key_Down: self.plot_column_sums,
                               Qt.Key_Right: self.plot_row_sums,
                               Qt.Key_Left: self.plot_row_sums,
-                              Qt.Key_S: self.show_decontaminated,
-                              Qt.Key_D: self.show_decontaminated,
-                              Qt.Key_V: self.show_variance,
-                              Qt.Key_C: self.show_contamination,
-                              Qt.Key_L: self.show_contaminant_table,
-                              Qt.Key_T: self.show_contaminant_table,
-                              Qt.Key_0: self.show_zeroth_orders,
-                              Qt.Key_Z: self.show_zeroth_orders,
-                              Qt.Key_R: self.show_residual,
-                              Qt.Key_O: self.show_original,
-                              Qt.Key_A: self.show_all_layers}
+                              Qt.Key_S:    self.show_decontaminated,
+                              Qt.Key_D:    self.show_decontaminated,
+                              Qt.Key_V:    self.show_variance,
+                              Qt.Key_C:    self.show_contamination,
+                              Qt.Key_L:    self.show_contaminant_table,
+                              Qt.Key_T:    self.show_contaminant_table,
+                              Qt.Key_0:    self.show_zeroth_orders,
+                              Qt.Key_Z:    self.show_zeroth_orders,
+                              Qt.Key_R:    self.show_residual,
+                              Qt.Key_O:    self.show_original,
+                              Qt.Key_A:    self.show_all_layers,
+                              Qt.Key_M:    self.show_model}
 
     @property
     def spec(self):
@@ -126,41 +127,6 @@ class Rect(QGraphicsRectItem):
 
     def keyPressEvent(self, event):
 
-        # if event.key() == Qt.Key_Up or event.key() == Qt.Key_Down:
-        #     self.plot_column_sums()
-        #     return
-        #
-        # if event.key() == Qt.Key_Right or event.key() == Qt.Key_Left:
-        #     self.plot_row_sums()
-        #     return
-        #
-        # if event.key() == Qt.Key_S:
-        #     self.show_decontaminated()
-        #     return
-        #
-        # if event.key() == Qt.Key_V:
-        #     self.show_variance()
-        #     return
-        #
-        # if event.key() == Qt.Key_C:
-        #     self.show_contamination()
-        #     return
-        #
-        # if event.key() == Qt.Key_O:
-        #     self.show_original()
-        #     return
-        #
-        # if event.key() == Qt.Key_R:
-        #     self.show_residual()
-        #     return
-        #
-        # if event.key() == Qt.Key_Z or event.key() == Qt.Key_0:
-        #     self.show_zeroth_orders()
-        #     return
-        #
-        # if event.key() == Qt.Key_L or event.key() == Qt.Key_T:
-        #     self.show_contaminant_table()
-
         if event.key() in self._key_bindings:
             self._key_bindings[event.key()]()
 
@@ -189,13 +155,14 @@ class Rect(QGraphicsRectItem):
 
         menu.addAction(plot_columns)
         menu.addAction(plot_rows)
+        menu.addAction("Show all layers", self.show_all_layers)
         menu.addAction("Show decontaminated spectrum", self.show_decontaminated)
         menu.addAction("Show original spectrum", self.show_original)
         menu.addAction("Show contamination", self.show_contamination)
         menu.addAction("Show decontaminated variance", self.show_variance)
         menu.addAction("Show zeroth-order positions", self.show_zeroth_orders)
         menu.addAction("Show residual", self.show_residual)
-        menu.addAction("Show all layers", self.show_all_layers)
+        menu.addAction("Show model spectrum", self.show_model)
 
         menu.exec(pos)
 
@@ -253,6 +220,11 @@ class Rect(QGraphicsRectItem):
             title = f"residual spectrum of {self.spec.id}"
             self.show_spec_layer(title, self.spec.science - self.model)
 
+    def show_model(self):
+        if self.model is not None:
+            title = f"Model of {self.spec.id}"
+            self.show_spec_layer(title, self.model)
+
     def show_spec_layer(self, title, data):
         plot = PlotWindow(title)
 
@@ -260,6 +232,7 @@ class Rect(QGraphicsRectItem):
         plt.imshow(data)
         plt.subplots_adjust(top=0.975, bottom=0.025, left=0.025, right=0.975)
         plt.draw()
+        plot.setWindowFlag(Qt.WindowStaysOnTopHint, False)
         plot.show()
 
         padding = 32
@@ -274,7 +247,10 @@ class Rect(QGraphicsRectItem):
 
     def show_all_layers(self):
         title = f'All Layers of {self.spec.id}'
-        plot = PlotWindow(title, shape=(5, 1))
+        horizontal = self.rect().width() > self.rect().height()
+        subplot_grid_shape = (7, 1) if horizontal else (1, 7)
+
+        plot = PlotWindow(title, shape=subplot_grid_shape)
 
         plt.sca(plot.axis[0])
         plt.imshow(self.spec.contamination + self.spec.science)
@@ -282,28 +258,49 @@ class Rect(QGraphicsRectItem):
         plt.draw()
 
         plt.sca(plot.axis[1])
-        plt.imshow(self.spec.science)
-        plt.title('Decontaminated')
-        plt.draw()
-
-        plt.sca(plot.axis[2])
         plt.imshow(self.spec.contamination)
         plt.title('Contamination')
         plt.draw()
 
+        plt.sca(plot.axis[2])
+        plt.imshow(self.spec.science)
+        plt.title('Decontaminated')
+        plt.draw()
+
         plt.sca(plot.axis[3])
+        if self.model is not None:
+            plt.imshow(self.model)
+            plt.title('Model')
+        else:
+            plt.title('N/A')
+        plt.draw()
+
+        plt.sca(plot.axis[4])
+        if self.model is not None:
+            plt.imshow(self.spec.science - self.model)
+            plt.title('Residual')
+        else:
+            plt.title('N/A')
+        plt.draw()
+
+        plt.sca(plot.axis[5])
         plt.imshow(self.spec.variance)
         plt.title('Variance')
         plt.draw()
 
-        plt.sca(plot.axis[4])
+        plt.sca(plot.axis[6])
         data = (flag['ZERO'] & self.spec.mask) == flag['ZERO']
         plt.imshow(data)
         plt.title('Zeroth Orders')
         plt.draw()
 
-        plt.subplots_adjust(top=0.975, bottom=0.025, left=0.025, right=0.975)
+        if horizontal:
+            plt.subplots_adjust(top=0.97, bottom=0.025, left=0.025, right=0.975, hspace=0, wspace=0)
+        else:
+            plt.subplots_adjust(top=0.9, bottom=0.03, left=0.025, right=0.975, hspace=0, wspace=0)
+
         plt.draw()
+        plot.setWindowFlag(Qt.WindowStaysOnTopHint, False)
         plot.show()
 
         padding = 50

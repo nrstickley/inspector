@@ -407,8 +407,12 @@ class DecontaminatedSpectraCollection:
         """
         if order == 0:
             raise ValueError("Models are not created for zeroth-order spectra.")
+        try:
+            model = self._hdf5_models[dither][detector][str(object_id)][order]
+        except KeyError:
+            model = None
 
-        return self._hdf5_models[dither][detector][str(object_id)][order]
+        return model
 
     def load(self, filename):
         """
