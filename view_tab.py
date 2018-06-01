@@ -124,13 +124,24 @@ class ViewTab(QWidget):
 
     def change_dither(self, dither_index):
         self.current_dither = self.selection_area.dither_selector.itemData(dither_index)
+        if dither_index != self.selection_area.dither_selector.currentIndex():
+            self.selection_area.dither_selector.blockSignals(True)
+            self.selection_area.dither_selector.setCurrentIndex(dither_index)
+            self.selection_area.dither_selector.blockSignals(False)
         self.update_view()
 
     def change_detector(self, detector_index):
         self.current_detector = self.selection_area.detector_selector.itemData(detector_index)
+        if detector_index != self.selection_area.detector_selector.currentIndex():
+            self.selection_area.detector_selector.blockSignals(True)
+            self.selection_area.detector_selector.setCurrentIndex(detector_index)
+            self.selection_area.detector_selector.blockSignals(False)
         self.update_view()
 
     def update_view(self):
+        if self.current_dither is None or self.current_detector is None:
+            return
+
         data = self.inspector.exposures[self.current_dither][self.current_detector].data
 
         pixmap = utils.np_to_pixmap(data, data.max())

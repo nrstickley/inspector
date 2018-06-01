@@ -146,8 +146,10 @@ class Rect(QGraphicsRectItem):
         plot_rows.setStatusTip('Plot the sums of the rows of pixels in the 2D spectrum.')
         plot_rows.triggered.connect(self.plot_row_sums)
 
+        menu.addSection(f'Object {self.spec.id}')
+
         menu.addAction("Open in analysis tab", self.open_analysis_tab)
-        menu.addAction(f"Open all spectra of object {self.spec.id}", self.open_all_spectra)
+        menu.addAction(f"Open in all detectors", self.open_all_spectra)
         menu.addAction("Show Info window", self.view.main.inspector.show_info)
         menu.addAction(table_of_contaminants)
 
@@ -329,4 +331,28 @@ class Rect(QGraphicsRectItem):
         print('this is where I would open an analysis tab.')
 
     def open_all_spectra(self):
-        print(f'this will open all spectra of {self.spec.id}')
+        view_tab = self.view.main
+        inspector = view_tab.inspector
+
+        # make a list of all open detectors (detectors currently being viewed in tabs)
+
+        open_detectors = []
+
+        for tab_index in range(inspector.tabs.count()):
+            tab = inspector.tabs.widget(tab_index)
+            if isinstance(tab, type(view_tab)):
+                open_detectors.append((tab.current_dither, tab.current_detector))
+
+        for dither in inspector.get_object_dithers(self.spec.id):
+            for detector in inspector.get_object_detectors(dither, self.spec.id):
+                current_dither = view_tab.current_dither
+                current_detector = view_tab.current_detector
+                if (dither, detector) not in open_detectors:
+                    inspector.new_view_tab(dither, detector)
+
+        # pin the object in all tabs:
+
+        for tab_index in range(inspector.tabs.count()):
+            if isinstance(tab, type(view_tab)):
+                inspector.tabs.widget(tab_index).select_spectrum_by_id(self.spec.id)
+

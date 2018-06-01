@@ -3,20 +3,6 @@
 """
 General plan:
 
- * context menu items for spectra:
-    - Open all spectra of object
-    - select object in all open views
-    - open in analysis tab
-    - show table of contaminants
-    - select all contaminants
-    - open Info Window
-    - show decontaminated spectrum
-    - show contamination
-    - show model
-    - show residual
-    - show variance
-    - plot horizontal profile
-    - plot vertical profile
  * make an analysis area class that can be inserted into new tabs
     - example showing how to embed MatPlotLib into Qt Widget:
           https://matplotlib.org/gallery/user_interfaces/embedding_in_qt_sgskip.html
@@ -25,10 +11,6 @@ General plan:
  * add the ability to to compute wavelengths
  * add the ability to to convert to physical flux values
  * in blank tabs, show a note about using the file menu or Ctrl+N to load exposures.
-
- Refactoring:
-
- * Move TabView and ObjectSelectionArea to a view_tab.py file
 
  New classes to implement:
 
@@ -82,6 +64,8 @@ class Inspector:
 
         self.collection = None  # this will hold the DecontaminatedSpectraCollection
         self.exposures = None  # this will hold the detectors as a nested map {dither: {detector: pixels}}
+        self.spectra = None # this will hold a map connecting object IDs with spectra, in the format:
+                            # {object_id: {dither: {detector: spectrum}}
 
         self.main, self.tabs = self.init_main()
 
@@ -170,6 +154,8 @@ class Inspector:
                 for view_tab in self.view_tab:
                     view_tab.selection_area.searchbox.returnPressed.connect(view_tab.select_spectrum)
 
+        self.organize_spectra_by_object_id()
+
     def load_exposures(self):
         """Loads Background-subtracted NISP Exposures."""
 
@@ -212,6 +198,29 @@ class Inspector:
         for view_tab in self.view_tab:
             view_tab.init_view()
 
+    def organize_spectra_by_object_id(self):
+        """
+        Constructs a map in the format {object_id: {dither: {detector: spectrum}} from self.collection
+        """
+        self.spectra = {}
+        for dither in self.collection.get_dithers():
+            for detector in self.collection.get_detectors(dither):
+                for object_id in self.collection.get_object_ids(dither, detector):
+                    if object_id not in self.spectra:
+                        self.spectra[object_id] = {dither: {}}
+                    if dither not in self.spectra[object_id]:
+                        self.spectra[object_id][dither] = {}
+                    if detector not in self.spectra[object_id][dither]:
+                        self.spectra[object_id][dither][detector] = None
+                    spec = self.collection.get_spectrum(dither, detector, object_id)
+                    self.spectra[object_id][dither][detector] = spec
+
+    def get_object_dithers(self, object_id):
+        return list(self.spectra[object_id].keys())
+
+    def get_object_detectors(self, dither, object_id):
+        return list(self.spectra[object_id][dither].keys())
+
     def show_info(self):
         m = QMessageBox(0, 'Info Window Placeholder',
                         "This is where we can show things like x and y pixel coordinates, RA, DEC, "
@@ -220,13 +229,18 @@ class Inspector:
         m.setWindowFlag(Qt.Window, True)
         m.exec()
 
-    def new_view_tab(self):
+    def new_view_tab(self, dither=None, detector=None):
         new_view_tab = ViewTab(inspector)
         self.view_tab.append(new_view_tab)
         self.tabs.addTab(new_view_tab, f'view {len(self.view_tab) - 1}')
         if self.exposures is not None:
             new_view_tab.init_view()
             new_view_tab.selection_area.searchbox.returnPressed.connect(new_view_tab.select_spectrum)
+
+        if dither is not None and detector is not None:
+            new_view_tab.change_dither(dither - 1)
+            new_view_tab.change_detector(detector - 1)
+            self.rename_tab(new_view_tab)
 
     def rename_tab(self, view_tab):
         # find the index of the view_tab and then use that index to change the name of the tab
