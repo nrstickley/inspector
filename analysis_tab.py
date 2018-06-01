@@ -1,43 +1,10 @@
 import numpy as np
-import matplotlib
-
-matplotlib.use('Qt5Agg')
-
-from matplotlib.backends.backend_qt4agg import FigureCanvas
-from matplotlib.backends.backend_qt4agg import NavigationToolbar2QT as NavigationToolbar
-from matplotlib import pyplot as plt
 
 from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QGridLayout
+from PyQt5.QtGui import QIcon
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QMdiArea, QMenuBar, QAction, QToolBar
 
-
-class PlotView(QWidget):
-    def __init__(self, *args):
-        super().__init__(*args)
-
-        mpl_layout = QVBoxLayout()
-
-        fig = plt.figure()
-
-        x = np.arange(-10, 10, 0.1)
-
-        y = np.arctan(x)
-
-        plt.plot(x, y, label='arctan(x)')
-        plt.xlabel('the x-coordinate')
-        plt.ylabel('$f(x)$')
-        plt.title("This is an embedded MatPlotLib figure!")
-        plt.legend()
-
-        fig_canvas = FigureCanvas(fig)
-
-        toolbar = NavigationToolbar(fig_canvas, self)
-
-        mpl_layout.addWidget(toolbar)
-        mpl_layout.addWidget(fig_canvas)
-
-        self.setLayout(mpl_layout)
-
+from plot_window import PlotWindow
 
 class AnalysisTab(QWidget):
     def __init__(self, inspector, object_id, *args):
@@ -49,57 +16,69 @@ class AnalysisTab(QWidget):
 
         self.contents = list()
 
-        layout = QGridLayout()
+        self.setMouseTracking(True)
+
+        layout = QVBoxLayout()
         layout.setSpacing(0)
 
-        self.setLayout(layout)
+        self.menubar = self.init_menu()
 
-        self.layout().addWidget(PlotView(), 0, 0)
-        self.layout().addWidget(PlotView(), 0, 1)
-        self.layout().addWidget(PlotView(), 1, 0)
-        self.layout().addWidget(PlotView(), 1, 1)
+        self.toolbar = self.init_toolbar()
+
+        self.mdi = QMdiArea(self)
+
+        ##########
+        x = np.arange(-10, 10, 0.1)
+        y = np.arctan(x)
+
+        plot = PlotWindow('a plot')
+
+        plot.axis.plot(x, y)
+
+        sub_window = self.mdi.addSubWindow(plot) #, Qt.FramelessWindowHint)
+
+        ##########
+
+        # TODO: set color of the MDI area with self.mdi.setBackground()
+
+        layout.addWidget(self.menubar)
+        layout.addWidget(self.toolbar)
+        layout.addWidget(self.mdi)
+
+        self.setLayout(layout)
 
     @property
     def object_id(self):
         return self._object_id
 
+    def init_menu(self):
+        menubar = QMenuBar(self)
+        menubar.setMouseTracking(True)
 
-def make_plot_window(title):
-    window = QWidget()
-    window.setWindowTitle(title)
-    window.setWindowFlag(Qt.WindowStaysOnTopHint, True)
-    window.setWindowFlag(Qt.Window, True)
+        plots = menubar.addMenu('Plots')
 
-    layout = QVBoxLayout()
-    window.setLayout(layout)
+        plots.addAction('plot option 1', self.make_plot)
+        plots.addAction('plot option 2', self.make_plot)
 
-    fig = plt.figure()
-    fig.title(title)
+        info = menubar.addMenu('Info')
+        info.addAction('show contaminant table', self.show_info)
 
-    figure_widget = FigureCanvas(fig)
+        return menubar
 
-    toolbar = NavigationToolbar(figure_widget, window)
+    def init_toolbar(self):
+        toolbar = QToolBar()
+        toolbar.setMouseTracking(True)
 
-    layout.addWidget(figure_widget)
-    layout.addWidget(toolbar)
+        show_table = QAction(QIcon('./table_icon.png'), '', toolbar)
+        show_table.setToolTip('show the table of contaminants')
+        show_table.triggered.connect(self.show_info)
 
+        toolbar.addAction(show_table)
 
-class PlotWindow(QWidget):
-    def __init__(self, title, *args):
-        super().__init__(*args)
+        return toolbar
 
-        self.setWindowTitle(title)
-        self.setWindowFlag(Qt.WindowStaysOnTopHint, True)
-        self.setWindowFlag(Qt.Window, True)
+    def make_plot(self):
+        print('this is where I would make a plot')
 
-        layout = QVBoxLayout()
-
-        self.fig = plt.figure()
-        self.fig.title(title)
-
-        self.figure_widget = FigureCanvas(self.fig)
-
-        toolbar = NavigationToolbar(self.figure_widget, self)
-
-        layout.addWidget(self.figure_widget)
-        layout.addWidget(toolbar)
+    def show_info(self):
+        print('this is where I would show info')
