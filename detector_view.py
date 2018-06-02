@@ -1,5 +1,4 @@
 
-
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (QGraphicsView, QMenu,)
 
@@ -15,11 +14,16 @@ class View(QGraphicsView):
 
         self._scale_factor = 1.0
 
+        self._ignore_count = 0
+
     def contextMenuEvent(self, event):
 
         item = self.scene().itemAt(event.globalPos(), self.transform())
 
         if isinstance(item, Rect) and item.contains(event.pos()):
+            return
+
+        if self.clicks_ignored():
             return
 
         menu = QMenu(self)
@@ -33,6 +37,14 @@ class View(QGraphicsView):
             show_hide_bounding.setDisabled(True)
 
         menu.exec(event.globalPos())
+
+    def ignore_clicks(self):
+        self._ignore_count += 1
+
+    def clicks_ignored(self):
+        result = self._ignore_count > 0
+        self._ignore_count = max(0, self._ignore_count - 1)
+        return result
 
     def keyPressEvent(self, event):
 

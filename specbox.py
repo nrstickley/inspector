@@ -136,6 +136,8 @@ class Rect(QGraphicsRectItem):
         table_of_contaminants = QAction('Show table of contaminants')
         table_of_contaminants.setStatusTip('Show a table containing information about the spectra that '
                                            'contaminate this source.')
+        table_of_contaminants.setShortcut('T')
+        table_of_contaminants.setShortcutVisibleInContextMenu(True)
         table_of_contaminants.triggered.connect(self.show_contaminant_table)
 
         plot_columns = QAction('Plot column sums', menu)
@@ -168,8 +170,10 @@ class Rect(QGraphicsRectItem):
 
         menu.exec(pos)
 
-    def contextMenuEvent(self, event: 'QGraphicsSceneContextMenuEvent'):
-        self.handle_right_click(event.screenPos())
+        self.view.ignore_clicks()
+
+    #def contextMenuEvent(self, event: 'QGraphicsSceneContextMenuEvent'):
+    #    self.handle_right_click(event.screenPos())
 
     def plot_column_sums(self):
         self.plot_pixel_sums(0, 'Column')
