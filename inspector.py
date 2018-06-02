@@ -3,10 +3,7 @@
 """
 General plan:
 
- * make an analysis area class that can be inserted into new tabs
-    - example showing how to embed MatPlotLib into Qt Widget:
-          https://matplotlib.org/gallery/user_interfaces/embedding_in_qt_sgskip.html
-    - make customizable plots that can be added to the analysis widget
+ * make customizable plots that can be added to the analysis widget
  * add the ability to load location tables
  * add the ability to to compute wavelengths
  * add the ability to to convert to physical flux values
@@ -14,11 +11,8 @@ General plan:
 
  New classes to implement:
 
- * AnalysisTab (and probably a few associated classes)
- * ContaminantTable for displaying the list of contaminants
  * InfoWindow for viewing x-y coords, RA, DEC, wavelengths of a specific spectrum, raw values of pixels,
    flux values of pixels
- * Plotter (probably)
  """
 
 import sys
