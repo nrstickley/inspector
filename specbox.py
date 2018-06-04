@@ -172,9 +172,6 @@ class Rect(QGraphicsRectItem):
 
         self.view.ignore_clicks()
 
-    #def contextMenuEvent(self, event: 'QGraphicsSceneContextMenuEvent'):
-    #    self.handle_right_click(event.screenPos())
-
     def plot_column_sums(self):
         self.plot_pixel_sums(0, 'Column')
 
