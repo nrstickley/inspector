@@ -744,10 +744,13 @@ class LocationTable:
 
             if 'Magnitudes' in info:
                 mags = np.array(info['Magnitudes'])
-                for _, mag, band in mags:
-                    if band == b'H':
+
+                for entry in mags:
+                    band = entry['Band']
+                    mag = entry['Value']
+                    if band == b'H' or band == 'H':
                         object_info.hmag = mag
-                    elif band == b'J':
+                    elif band == b'J' or band == 'J':
                         object_info.jmag = mag
 
             object_info.id = object_id

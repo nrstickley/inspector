@@ -25,11 +25,13 @@ class ObjectInfoWindow(QWidget):
         type_value.setTextInteractionFlags(Qt.TextSelectableByMouse)
 
         jmag_label = QLabel(f"J Mag:")
-        jmag_value = QLabel(f"{info.jmag:0.4f}")
+        jmag_value_text = f"{info.jmag:0.4f}" if info.jmag is not None else 'N/A'
+        jmag_value = QLabel(jmag_value_text)
         jmag_value.setTextInteractionFlags(Qt.TextSelectableByMouse)
 
         hmag_label = QLabel(f"H Mag:")
-        hmag_value = QLabel(f"{info.hmag:0.4f}")
+        hmag_value_text = f"{info.hmag:0.4f}" if info.hmag is not None else 'N/A'
+        hmag_value = QLabel(hmag_value_text)
         hmag_value.setTextInteractionFlags(Qt.TextSelectableByMouse)
 
         ra_label = QLabel(f"RA:")
