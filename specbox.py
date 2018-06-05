@@ -375,7 +375,7 @@ class Rect(QGraphicsRectItem):
             self._info_window = info_window
         else:
             m = QMessageBox(0, 'No Object info available',
-                            "You will need to first load a location table containing the requested information.",
+                            "Location tables containing the requested information must be loaded before showing info.",
                             QMessageBox.NoButton)
             m.setWindowFlag(Qt.Window, True)
             m.exec()

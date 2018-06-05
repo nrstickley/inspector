@@ -1,7 +1,6 @@
 import os
 import h5py
 import json
-import time
 
 import numpy as np
 
@@ -483,7 +482,7 @@ class DecontaminatedSpectraCollection:
 
         progress = QProgressDialog("Loading decontaminated spectra collections", None, 0, n_files, self._parent)
         plural = 'files' if n_files > 1 else 'file'
-        progress.setWindowTitle(f"Loading {n_files} {plural}")
+        progress.setWindowTitle(f"Loading {n_files} decontaminated spectra {plural}")
         progress.setModal(True)
         progress.setMinimumDuration(0)
         progress.setValue(0)
@@ -708,7 +707,7 @@ class LocationTable:
 
         progress = QProgressDialog("Loading location tables", None, 0, n_files, self._parent)
         plural = 'files' if n_files > 1 else 'file'
-        progress.setWindowTitle(f"Loading {n_files} {plural}")
+        progress.setWindowTitle(f"Loading {n_files} location table {plural}")
         progress.setModal(True)
         progress.setMinimumDuration(0)
         progress.setValue(0)
@@ -736,8 +735,6 @@ class LocationTable:
         self._location_tables.append(f)
 
         for object_id in f['Location Objects']:
-            if object_id in self._info:
-                return
 
             info = f[f'Location Objects/{object_id}/Astronomical Object']
 

@@ -81,6 +81,10 @@ class Inspector:
 
         self.menu = self.init_menu()
 
+        self._session = {}
+
+        self._loading_session = False
+
     def init_menu(self):
         """Creates the main menu."""
         menu = self.main.menuBar()
@@ -99,25 +103,43 @@ class Inspector:
         load_nisp.setStatusTip('Load one or more NISP exposures, listed in a JSON file.')
         load_nisp.triggered.connect(self.load_exposures)
 
-        file_menu.addAction(load_nisp)
-
         load_decon = QAction('Load Spectra', main_menu)
         load_decon.setShortcut('Ctrl+S')
         load_decon.setStatusTip('Load one or more decontaminated spectra collections, listed in a JSON file.')
         load_decon.triggered.connect(self.load_spectra)
-
-        file_menu.addAction(load_decon)
 
         load_loctab = QAction('Load Location Tables', main_menu)
         load_loctab.setShortcut('Ctrl+L')
         load_loctab.setToolTip('Load spectral metadata from the location tables.')
         load_loctab.triggered.connect(self.load_location_tables)
 
-        file_menu.addAction(load_loctab)
+        save_session = QAction('Save Session As...', main_menu)
+        save_session.setShortcut('Ctrl+S')
+        save_session.setStatusTip('Saves session information, regarding the currently loaded files.')
+        save_session.triggered.connect(self.save_session)
+
+        load_session = QAction('Load Session', main_menu)
+        load_session.setShortcut('Ctrl+O')
+        load_session.setStatusTip('Loads all files from a previous session.')
+        load_session.triggered.connect(self.load_session)
 
         exit_app = QAction('Exit', main_menu)
         exit_app.setStatusTip('Close the application.')
         exit_app.triggered.connect(self.exit)
+
+        file_menu.addAction(load_nisp)
+
+        file_menu.addAction(load_decon)
+
+        file_menu.addAction(load_loctab)
+
+        file_menu.addSeparator()
+
+        file_menu.addAction(save_session)
+
+        file_menu.addAction(load_session)
+
+        file_menu.addSeparator()
 
         file_menu.addAction(exit_app)
 
@@ -135,7 +157,12 @@ class Inspector:
         return windows_menu
 
     def load_spectra(self):
-        filename, _ = QFileDialog.getOpenFileName(self.main, caption='Open Decontaminated Spectra', filter='*.json')
+        if not self._loading_session:
+            filename, _ = QFileDialog.getOpenFileName(self.main, caption='Open Decontaminated Spectra', filter='*.json')
+        else:
+            filename = self._session['spectra']
+            if filename == '':
+                return
 
         if os.path.isfile(filename):
             print(f"Loading {filename}.")
@@ -155,12 +182,18 @@ class Inspector:
 
         self.organize_spectra_by_object_id()
 
+        self._session['spectra'] = filename
+
     def load_exposures(self):
         """Loads Background-subtracted NISP Exposures."""
-
-        nisp_exposures_json_file, _ = QFileDialog.getOpenFileName(self.main,
-                                                                  caption='Open NISP Exposures',
-                                                                  filter='*.json')
+        if not self._loading_session:
+            nisp_exposures_json_file, _ = QFileDialog.getOpenFileName(self.main,
+                                                                      caption='Open NISP Exposures',
+                                                                      filter='*.json')
+        else:
+            nisp_exposures_json_file = self._session['exposures']
+            if nisp_exposures_json_file == '':
+                return
 
         if not os.path.isfile(nisp_exposures_json_file):
             return
@@ -197,8 +230,15 @@ class Inspector:
         for view_tab in self.view_tab:
             view_tab.init_view()
 
+        self._session['exposures'] = nisp_exposures_json_file
+
     def load_location_tables(self):
-        filename, _ = QFileDialog.getOpenFileName(self.main, caption='Open Decontaminated Spectra', filter='*.json')
+        if not self._loading_session:
+            filename, _ = QFileDialog.getOpenFileName(self.main, caption='Open Decontaminated Spectra', filter='*.json')
+        else:
+            filename = self._session['location_tables']
+            if filename == '':
+                return
 
         if os.path.isfile(filename):
             print(f"Loading {filename}.")
@@ -211,6 +251,8 @@ class Inspector:
                                                   'Verify that the file format is correct.')
                 message.exec()
             self.app.restoreOverrideCursor()
+
+        self._session['location_tables'] = filename
 
     def organize_spectra_by_object_id(self):
         """
@@ -277,6 +319,45 @@ class Inspector:
 
         if self.tabs.count() == 0:
             self.exit()
+
+    def save_session(self):
+        filename, _ = QFileDialog.getSaveFileName(self.main, caption='Save Session', filter='*.sir')
+
+        fields = ['exposures',
+                  'spectra',
+                  'location_tables',
+                  'grism_1_sens',
+                  'grism_2_sens',
+                  'grism_3_sens',
+                  'grism_4_sens',
+                  'j_sens',
+                  'h_sens']
+
+        for field in fields:
+            if field not in self._session:
+                self._session[field] = ''
+
+        if (len(filename) > 4 and filename[-4:] != '.sir') or 0 < len(filename) < 4:
+            filename += '.sir'
+        elif len(filename) == 0:
+            filename -= 'untitled_session.sir'
+
+        with open(filename, 'w') as f:
+            json.dump(self._session, f)
+
+    def load_session(self):
+        filename, _ = QFileDialog.getOpenFileName(self.main, caption='Save Session', filter='*.sir')
+
+        with open(filename) as f:
+            self._session = json.load(f)
+
+        self._loading_session = True
+
+        self.load_exposures()
+        self.load_spectra()
+        self.load_location_tables()
+
+        self._loading_session = False
 
     def exit(self):
         print('shutting down')

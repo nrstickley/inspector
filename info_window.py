@@ -1,7 +1,10 @@
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import QWidget, QLabel, QVBoxLayout, QGroupBox, QGridLayout
+from PyQt5.QtWidgets import QWidget, QLabel, QVBoxLayout, QGroupBox, QGridLayout, QApplication
+
+
+type_name = {1: 'Galaxy', 2: 'Star'}
 
 
 class ObjectInfoWindow(QWidget):
@@ -18,7 +21,7 @@ class ObjectInfoWindow(QWidget):
         oid_value.setTextInteractionFlags(Qt.TextSelectableByMouse)
 
         type_label = QLabel(f"Object type:")
-        type_value = QLabel(f"{info.type}")
+        type_value = QLabel(f"{info.type} ({type_name[info.type]})")
         type_value.setTextInteractionFlags(Qt.TextSelectableByMouse)
 
         jmag_label = QLabel(f"J Mag:")
@@ -88,3 +91,19 @@ class ObjectInfoWindow(QWidget):
         self.setWindowTitle('Object Info')
         self.setWindowFlag(Qt.Window, True)
         self.setWindowFlag(Qt.WindowStaysOnTopHint, True)
+
+        display = QApplication.desktop()
+
+        cursor_x = display.cursor().pos().x()
+        cursor_y = display.cursor().pos().y()
+
+        self.setGeometry(cursor_x, cursor_y, 300, 500)
+
+        self.setContentsMargins(20, 20, 20, 20)
+
+        self.adjustSize()
+
+    def keyPressEvent(self, event):
+
+        if event.key() == Qt.Key_Q or event.key() == Qt.Key_Escape:
+            self.close()
