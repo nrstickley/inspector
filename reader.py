@@ -638,3 +638,134 @@ class DecontaminatedSpectraCollection:
         if filename_extension not in DecontaminatedSpectraCollection.VALID_EXTENSIONS:
             raise ValueError("The file extension (suffix) must be one of "
                              f"{DecontaminatedSpectraCollection.VALID_EXTENSIONS}.")
+
+
+class ObjectInfo:
+    __slots__ = ['id',
+                 'ra',
+                 'dec',
+                 'jmag',
+                 'hmag',
+                 'color',
+                 'angle',
+                 'type',
+                 'major_axis',
+                 'minor_axis']
+
+    def __init__(self):
+        self.id = None
+        self.ra = None
+        self.dec = None
+        self.jmag = None
+        self.hmag = None
+        self.color = None
+        self.angle = None
+        self.type = None
+        self.major_axis = None
+        self.minor_axis = None
+
+
+class LocationTable:
+    """
+    A class for loading data stored in location tables that is not stored in the DecontaminatedSpectraCollection class.
+    """
+    def __init__(self, filename=None, parent=None):
+
+        self._location_tables = []
+
+        self._info = {}  # {id: object_info}
+
+        self._parent = parent
+
+        if isinstance(filename, str):
+            self.load_json(filename)
+        elif isinstance(filename, list):
+            self.load_hdf5_files(filename)
+        else:
+            raise TypeError('Expected a JSON filename or a list of HDF5 filenames.')
+
+    def load_json(self, filename):
+        if not os.path.isabs(filename):
+            raise ValueError("The filename must include the full (absolute) path.")
+
+        dir_name = os.path.dirname(filename)
+
+        with open(filename) as f:
+            location_tables = json.load(f)
+
+        filenames = [os.path.join(dir_name, 'data', f) for f in location_tables]
+
+        self.load_hdf5_files(filenames)
+
+    def load_hdf5_files(self, filenames):
+        n_files = len(filenames)
+
+        for f in filenames:
+            if not h5py.is_hdf5(f):
+                raise TypeError(f'{f} is not a valid HDF5 file.')
+
+        loop = QEventLoop()
+
+        progress = QProgressDialog("Loading location tables", None, 0, n_files, self._parent)
+        plural = 'files' if n_files > 1 else 'file'
+        progress.setWindowTitle(f"Loading {n_files} {plural}")
+        progress.setModal(True)
+        progress.setMinimumDuration(0)
+        progress.setValue(0)
+        progress.show()
+
+        loop.processEvents()
+
+        for i, filename in enumerate(filenames):
+            status_message = f'loading {filename}'
+            progress.setLabelText(status_message)
+            progress.setValue(i)
+            loop.processEvents()
+
+            self.load_hdf5(filename)
+
+            progress.setValue(i + 1)
+            loop.processEvents()
+
+        progress.close()
+
+    def load_hdf5(self, filename):
+
+        f = h5py.File(filename)
+
+        self._location_tables.append(f)
+
+        for object_id in f['Location Objects']:
+            if object_id in self._info:
+                return
+
+            info = f[f'Location Objects/{object_id}/Astronomical Object']
+
+            metadata = info.attrs
+
+            object_info = ObjectInfo()
+
+            if 'Magnitudes' in info:
+                mags = np.array(info['Magnitudes'])
+                for _, mag, band in mags:
+                    if band == b'H':
+                        object_info.hmag = mag
+                    elif band == b'J':
+                        object_info.jmag = mag
+
+            object_info.id = object_id
+            object_info.color = metadata['Color'] if 'Color' in metadata else None
+            object_info.angle = metadata['Angle'] if 'Angle' in metadata else None
+            object_info.type = metadata['Type'] if 'Type' in metadata else None
+            object_info.ra = metadata['RA'] if 'RA' in metadata else None
+            object_info.dec = metadata['Dec'] if 'Dec' in metadata else None
+            object_info.major_axis = metadata['Major axis'] if 'Major axis' in metadata else None
+            object_info.minor_axis = metadata['Minor axis'] if 'Minor axis' in metadata else None
+
+            self._info[object_id] = object_info
+
+    def get_info(self, object_id):
+        return self._info[object_id]
+
+
+

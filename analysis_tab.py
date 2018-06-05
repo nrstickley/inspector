@@ -6,6 +6,7 @@ from PyQt5.QtWidgets import QWidget, QVBoxLayout, QMdiArea, QMenuBar, QAction, Q
 
 from plot_window import PlotWindow
 
+
 class AnalysisTab(QWidget):
     def __init__(self, inspector, dither, detector, object_id, *args):
         super().__init__(*args)

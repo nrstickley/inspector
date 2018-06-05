@@ -4,7 +4,6 @@
 General plan:
 
  * make customizable plots that can be added to the analysis widget
- * add the ability to load location tables
  * add the ability to to compute wavelengths
  * add the ability to to convert to physical flux values
  * in blank tabs, show a note about using the file menu or Ctrl+N to load exposures.
@@ -12,7 +11,7 @@ General plan:
  New classes to implement:
 
  * InfoWindow for viewing x-y coords, RA, DEC, wavelengths of a specific spectrum, raw values of pixels,
-   flux values of pixels
+   flux values of pixels (possibly not necessary)
  """
 
 import sys
@@ -28,7 +27,7 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QTabWidget, QFileDialog,
 from view_tab import ViewTab
 from analysis_tab import AnalysisTab
 
-from reader import DecontaminatedSpectraCollection
+from reader import DecontaminatedSpectraCollection, LocationTable
 
 
 NISP_DETECTOR_MAP = {1: '11',
@@ -58,8 +57,9 @@ class Inspector:
 
         self.collection = None  # this will hold the DecontaminatedSpectraCollection
         self.exposures = None  # this will hold the detectors as a nested map {dither: {detector: pixels}}
-        self.spectra = None # this will hold a map connecting object IDs with spectra, in the format:
-                            # {object_id: {dither: {detector: spectrum}}
+        self.spectra = None  # this will hold a map connecting object IDs with spectra, in the format:
+                             # {object_id: {dither: {detector: spectrum}}
+        self.location_tables = None  # this will hold a reader.LocationTable object
 
         self.main, self.tabs = self.init_main()
 
@@ -107,6 +107,13 @@ class Inspector:
         load_decon.triggered.connect(self.load_spectra)
 
         file_menu.addAction(load_decon)
+
+        load_loctab = QAction('Load Location Tables', main_menu)
+        load_loctab.setShortcut('Ctrl+L')
+        load_loctab.setToolTip('Load spectral metadata from the location tables.')
+        load_loctab.triggered.connect(self.load_location_tables)
+
+        file_menu.addAction(load_loctab)
 
         exit_app = QAction('Exit', main_menu)
         exit_app.setStatusTip('Close the application.')
@@ -189,6 +196,21 @@ class Inspector:
 
         for view_tab in self.view_tab:
             view_tab.init_view()
+
+    def load_location_tables(self):
+        filename, _ = QFileDialog.getOpenFileName(self.main, caption='Open Decontaminated Spectra', filter='*.json')
+
+        if os.path.isfile(filename):
+            print(f"Loading {filename}.")
+            self.app.setOverrideCursor(Qt.WaitCursor)
+            try:
+                self.location_tables = LocationTable(filename, self.main)
+            except:
+                self.collection = None
+                message = QMessageBox(0, 'Error', 'Could not load the location tables. '
+                                                  'Verify that the file format is correct.')
+                message.exec()
+            self.app.restoreOverrideCursor()
 
     def organize_spectra_by_object_id(self):
         """

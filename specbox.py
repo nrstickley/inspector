@@ -6,10 +6,11 @@ import matplotlib.pyplot as plt
 from PyQt5.QtCore import Qt, QRectF
 from PyQt5.QtGui import QColor, QPen
 from PyQt5.QtWidgets import (QGraphicsRectItem, QMenu, QAction, QGraphicsTextItem, QGraphicsItem,
-                             QGraphicsSceneMouseEvent, QApplication)
+                             QGraphicsSceneMouseEvent, QApplication, QMessageBox)
 
 from spec_table import SpecTable
 from plot_window import PlotWindow
+from info_window import ObjectInfoWindow
 
 
 flag = {"ZERO": np.uint32(2**18),     # zeroth-order: bit 18
@@ -38,6 +39,7 @@ class Rect(QGraphicsRectItem):
         self._spec = None
         self._model = None
         self._contam_table = None
+        self._info_window = None
 
         self._key_bindings = {Qt.Key_Up:   self.plot_column_sums,
                               Qt.Key_Down: self.plot_column_sums,
@@ -54,7 +56,8 @@ class Rect(QGraphicsRectItem):
                               Qt.Key_R:    self.show_residual,
                               Qt.Key_O:    self.show_original,
                               Qt.Key_A:    self.show_all_layers,
-                              Qt.Key_M:    self.show_model}
+                              Qt.Key_M:    self.show_model,
+                              Qt.Key_I:    self.show_info}
 
     @property
     def spec(self):
@@ -151,8 +154,8 @@ class Rect(QGraphicsRectItem):
         menu.addSection(f'Object {self.spec.id}')
 
         menu.addAction("Open in analysis tab", self.open_analysis_tab)
-        menu.addAction(f"Open in all detectors", self.open_all_spectra)
-        menu.addAction("Show Info window", self.view.main.inspector.show_info)
+        menu.addAction(f"Show in all detectors", self.open_all_spectra)
+        menu.addAction("Show Object Info", self.show_info)
         menu.addAction(table_of_contaminants)
 
         menu.addSection('Plots')
@@ -359,3 +362,20 @@ class Rect(QGraphicsRectItem):
             if isinstance(tab, type(view_tab)):
                 inspector.tabs.widget(tab_index).select_spectrum_by_id(self.spec.id)
 
+    def show_info(self):
+
+        view_tab = self.view.main
+        inspector = view_tab.inspector
+
+        if inspector.location_tables is not None:
+            info = inspector.location_tables.get_info(self.spec.id)
+            info_window = ObjectInfoWindow(info, inspector)
+            info_window.show()
+            # todo: refine window placement (imitate table placement)
+            self._info_window = info_window
+        else:
+            m = QMessageBox(0, 'No Object info available',
+                            "You will need to first load a location table containing the requested information.",
+                            QMessageBox.NoButton)
+            m.setWindowFlag(Qt.Window, True)
+            m.exec()
