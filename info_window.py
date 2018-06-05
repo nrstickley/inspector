@@ -16,47 +16,25 @@ class ObjectInfoWindow(QWidget):
 
         layout = QGridLayout()
 
-        oid_label = QLabel(f"Object ID:")
-        oid_value = QLabel(f"{info.id}")
-        oid_value.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        oid_label, oid_value = self._make_label_value_pair('Object ID', info.id, 's')
 
-        type_label = QLabel(f"Object type:")
-        type_value = QLabel(f"{info.type} ({type_name[info.type]})")
-        type_value.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        type_label, type_value = self._make_label_value_pair('Object type', f"{info.type} ({type_name[info.type]})", 's')
 
-        jmag_label = QLabel(f"J Mag:")
-        jmag_value_text = f"{info.jmag:0.4f}" if info.jmag is not None else 'N/A'
-        jmag_value = QLabel(jmag_value_text)
-        jmag_value.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        jmag_label, jmag_value = self._make_label_value_pair('J Mag', info.jmag, '0.4f')
 
-        hmag_label = QLabel(f"H Mag:")
-        hmag_value_text = f"{info.hmag:0.4f}" if info.hmag is not None else 'N/A'
-        hmag_value = QLabel(hmag_value_text)
-        hmag_value.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        hmag_label, hmag_value = self._make_label_value_pair('H Mag', info.hmag, '0.4f')
 
-        ra_label = QLabel(f"RA:")
-        ra_value = QLabel(f"{info.ra:0.4f}")
-        ra_value.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        ra_label, ra_value = self._make_label_value_pair('RA', info.ra, '0.4f')
 
-        dec_label = QLabel(f"Dec:")
-        dec_value = QLabel(f"{info.dec:0.4f}")
-        dec_value.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        dec_label, dec_value = self._make_label_value_pair('Dec', info.dec, '0.4f')
 
-        color_label = QLabel(f"Color:")
-        color_value = QLabel(f"{info.color:0.4f}")
-        color_value.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        color_label, color_value = self._make_label_value_pair('Color', info.color, '0.4f')
 
-        angle_label = QLabel(f"Angle:")
-        angle_value = QLabel(f"{info.angle:0.4f}")
-        angle_value.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        angle_label, angle_value = self._make_label_value_pair('Angle', info.angle, '0.4f')
 
-        major_axis_label = QLabel(f"Major axis:")
-        major_axis_value = QLabel(f"{info.major_axis:0.4f}")
-        major_axis_value.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        major_axis_label, major_axis_value = self._make_label_value_pair('Major axis', info.major_axis, '0.4f')
 
-        minor_axis_label = QLabel(f"Minor axis:")
-        minor_axis_value = QLabel(f"{info.minor_axis:0.4f}")
-        minor_axis_value.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        minor_axis_label, minor_axis_value = self._make_label_value_pair('Minor axis', info.minor_axis, '0.4f')
 
         layout.addWidget(oid_label, 0, 0)
         layout.addWidget(oid_value, 0, 1)
@@ -109,3 +87,11 @@ class ObjectInfoWindow(QWidget):
 
         if event.key() == Qt.Key_Q or event.key() == Qt.Key_Escape:
             self.close()
+
+    @staticmethod
+    def _make_label_value_pair(label_text, value, value_format):
+        text_label = QLabel(f"{label_text}:")
+        value_text = f"{value:{value_format}}" if value is not None else 'N/A'
+        value_label = QLabel(value_text)
+        value_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        return text_label, value_label
