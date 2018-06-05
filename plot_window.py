@@ -32,6 +32,8 @@ class PlotWindow(QWidget):
             self.fig, self.axis = plt.subplots(rows, columns)
             self.fig.suptitle(title)
 
+        self.fig.set_dpi(100)
+
         self.figure_widget = FigureCanvas(self.fig)
 
         toolbar = NavigationToolbar(self.figure_widget, self)

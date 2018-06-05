@@ -348,6 +348,9 @@ class Inspector:
     def load_session(self):
         filename, _ = QFileDialog.getOpenFileName(self.main, caption='Save Session', filter='*.sir')
 
+        if filename == '':
+            return
+
         with open(filename) as f:
             self._session = json.load(f)
 
@@ -387,6 +390,8 @@ class Inspector:
 if __name__ == '__main__':
 
     app = QApplication(sys.argv)
+
+    app.setAttribute(Qt.AA_EnableHighDpiScaling, True)
 
     inspector = Inspector(app)
 
