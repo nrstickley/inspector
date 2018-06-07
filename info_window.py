@@ -90,9 +90,11 @@ class ObjectInfoWindow(QWidget):
 
         self.setGeometry(cursor_x, cursor_y, 300, 500)
 
-        self.setContentsMargins(20, 20, 20, 20)
+        self.setContentsMargins(30, 30, 30, 30)
 
         self.adjustSize()
+
+        self.setWindowOpacity(0.8)
 
     def keyPressEvent(self, event):
 
@@ -107,6 +109,9 @@ class DetectorInfoWindow(QWidget):
         self._inspector = inspector
         self._dither = None
         self._detector = None
+        self.wcs = None
+        self.header_string = None
+        self.detector_data = None
 
         vlayout = QVBoxLayout()
 
@@ -177,17 +182,15 @@ class DetectorInfoWindow(QWidget):
 
         self.setGeometry(cursor_x, cursor_y, 300, 500)
 
-        self.setContentsMargins(20, 20, 20, 20)
+        self.setContentsMargins(30, 30, 30, 30)
 
         self.adjustSize()
 
-        self.wcs = None
-        self.header_string = None
-        self.detector_data = None
+        self.setWindowOpacity(0.8)
 
     def fetch_header_info(self, dither, detector):
         fits_header = self._inspector.exposures[dither][detector].header
-        self.header_string = str(fits_header.tostring)
+        self.header_string = '\n'.join(str(fits_header.tostring).split('\n')[1:])[:-1]
         self.wcs = wcs.WCS(fits_header)
         self.detector_id_value.setText(fits_header['DET_ID'])
         self.ra_aperture_value.setText(f"{fits_header['RA_APER']:0.5f}")
@@ -201,7 +204,8 @@ class DetectorInfoWindow(QWidget):
         self._detector = detector
         self.fetch_header_info(dither, detector)
         self.detector_data = self._inspector.exposures[dither][detector].data
-        print('updating the detector')
+        if self.header_display is not None:
+            self.header_display.setPlainText(self.header_string)
 
     def update_cursor_position(self, position):
         if self.detector_data is None or self.wcs is None or self._detector is None:
@@ -222,20 +226,23 @@ class DetectorInfoWindow(QWidget):
         self.cursor_data_value.setText(f'{self.detector_data[j, i] if in_image else 0.0:0.6f}')
 
     def show_header(self):
-        string = '\n'.join(self.header_string.split('\n')[1:])
-        self.header_display = QPlainTextEdit(string)
-        self.header_display.setReadOnly(True)
+
+        if self.header_display is None:
+            self.header_display = QPlainTextEdit(self.header_string)
+            self.header_display.setReadOnly(True)
+            self.layout().addWidget(self.header_display)
+        else:
+            self.header_display.setPlainText(self.header_string)
+
         self.header_display.setMinimumSize(600, 300)
-        self.layout().addWidget(self.header_display)
+        self.header_display.show()
         self.adjustSize()
         self.header_button.setText('Hide header')
         self.header_button.pressed.connect(self.hide_header)
 
     def hide_header(self):
-        self.layout().removeWidget(self.header_display)
+        self.setMinimumSize(0, 0)
         self.header_display.hide()
-        self.header_display.close()
-        self.header_display = None
         self.adjustSize()
         self.header_button.setText('Show header')
         self.header_button.pressed.connect(self.show_header)

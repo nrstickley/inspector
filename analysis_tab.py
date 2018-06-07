@@ -64,20 +64,6 @@ class AnalysisTab(QWidget):
     def detector(self):
         return self._detector
 
-    def init_menu(self):
-        menubar = QMenuBar(self)
-        menubar.setMouseTracking(True)
-
-        plots = menubar.addMenu('Plots')
-
-        plots.addAction('plot option 1', self.make_plot)
-        plots.addAction('plot option 2', self.make_plot)
-
-        info = menubar.addMenu('Info')
-        info.addAction('show contaminant table', self.show_info)
-
-        return menubar
-
     def init_toolbar(self):
         toolbar = QToolBar()
         toolbar.setMouseTracking(True)
