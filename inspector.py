@@ -3,10 +3,22 @@
 """
 General plan:
 
- * make customizable plots that can be added to the analysis widget
+ * show zeroth order contaminant boxes.
+
+ * make customizable plots that can be added to the analysis tab?
  * add the ability to to compute wavelengths
  * add the ability to to convert to physical flux values
  * in blank tabs, show a note about using the file menu or Ctrl+N to load exposures.
+
+ In the analysis tab:
+
+ * load grism sensitivity / calibration vector (1 for each dither)
+ * load load j and h sensitivities
+ * show all 2D spectra for the object
+ * show all collapsed 1D spectra for the object
+ * show wavelength - flux plots for the 4 dithers (along with the J and H band magnitudes)
+     - this should show original, decontaminated, and model (if there is a model)
+ * show table of contaminants for each dither and each detector? maybe not
 
  New classes to implement:
 
@@ -26,28 +38,9 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QTabWidget, QFileDialog,
 
 from view_tab import ViewTab
 from analysis_tab import AnalysisTab
+from info_window import DetectorInfoWindow
 
-from reader import DecontaminatedSpectraCollection, LocationTable
-
-
-NISP_DETECTOR_MAP = {1: '11',
-                     2: '21',
-                     3: '31',
-                     4: '41',
-                     5: '12',
-                     6: '22',
-                     7: '32',
-                     8: '42',
-                     9: '13',
-                     10: '23',
-                     11: '33',
-                     12: '43',
-                     13: '14',
-                     14: '24',
-                     15: '34',
-                     16: '44'}
-
-DETECTOR_ID = {val: key for key, val in NISP_DETECTOR_MAP.items()}
+from reader import DecontaminatedSpectraCollection, LocationTable, NISP_DETECTOR_MAP
 
 
 class Inspector:
@@ -77,6 +70,8 @@ class Inspector:
 
         self.tabs.tabBarDoubleClicked.connect(self.new_view_tab)
 
+        self.tabs.currentChanged.connect(self._change_detector)
+
         self.tabs.setMovable(True)
 
         self.menu = self.init_menu()
@@ -84,6 +79,8 @@ class Inspector:
         self._session = {}
 
         self._loading_session = False
+
+        self._detector_info_window = DetectorInfoWindow(self)
 
     def init_menu(self):
         """Creates the main menu."""
@@ -104,7 +101,7 @@ class Inspector:
         load_nisp.triggered.connect(self.load_exposures)
 
         load_decon = QAction('Load Spectra', main_menu)
-        load_decon.setShortcut('Ctrl+S')
+        load_decon.setShortcut('Ctrl+D')
         load_decon.setStatusTip('Load one or more decontaminated spectra collections, listed in a JSON file.')
         load_decon.triggered.connect(self.load_spectra)
 
@@ -155,6 +152,10 @@ class Inspector:
         windows_menu.addAction(show_info)
 
         return windows_menu
+
+    @property
+    def detector_info_window(self):
+        return self._detector_info_window
 
     def load_spectra(self):
         if not self._loading_session:
@@ -278,12 +279,8 @@ class Inspector:
         return list(self.spectra[object_id][dither].keys())
 
     def show_info(self):
-        m = QMessageBox(0, 'Info Window Placeholder',
-                        "This is where we can show things like x and y pixel coordinates, RA, DEC, "
-                        "additional info about the exposures and detectors, etc.",
-                        QMessageBox.NoButton)
-        m.setWindowFlag(Qt.Window, True)
-        m.exec()
+        if self.exposures is not None:
+            self._detector_info_window.show()
 
     def new_view_tab(self, dither=None, detector=None):
         new_view_tab = ViewTab(inspector)
@@ -319,6 +316,14 @@ class Inspector:
 
         if self.tabs.count() == 0:
             self.exit()
+
+    def _change_detector(self, tab_index):
+        item = self.tabs.widget(tab_index)
+        if item in self.view_tab:
+            item.current_detector
+            item.current_dither
+            self.detector_info_window.update_detector(item.current_dither, item.current_detector)
+
 
     def save_session(self):
         filename, _ = QFileDialog.getSaveFileName(self.main, caption='Save Session', filter='*.sir')
@@ -396,3 +401,7 @@ if __name__ == '__main__':
     inspector = Inspector(app)
 
     app.exec()
+
+    app.closeAllWindows()
+
+    app.exit(0)

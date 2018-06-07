@@ -16,6 +16,26 @@ EXPOSURE_ID_LABEL = 'Exposure ID'
 FIELD_ID_LABEL = 'Field ID'
 
 
+NISP_DETECTOR_MAP = {1: '11',
+                     2: '21',
+                     3: '31',
+                     4: '41',
+                     5: '12',
+                     6: '22',
+                     7: '32',
+                     8: '42',
+                     9: '13',
+                     10: '23',
+                     11: '33',
+                     12: '43',
+                     13: '14',
+                     14: '24',
+                     15: '34',
+                     16: '44'}
+
+DETECTOR_ID = {val: key for key, val in NISP_DETECTOR_MAP.items()}
+
+
 class DecontaminatedSpectrum:
     """
     A struct-like class for storing the decontamination products for a single spectrum.

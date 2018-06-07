@@ -16,6 +16,8 @@ class View(QGraphicsView):
 
         self._ignore_count = 0
 
+        self.setMouseTracking(True)
+
     def contextMenuEvent(self, event):
 
         item = self.scene().itemAt(event.globalPos(), self.transform())
@@ -65,6 +67,13 @@ class View(QGraphicsView):
             return
 
         self.scene().keyPressEvent(event)
+
+    def mouseMoveEvent(self, event):
+        position = self.mapToScene(event.pos())
+
+        self.main.inspector.detector_info_window.update_cursor_position(position)
+
+        super().mouseMoveEvent(event)
 
     @property
     def main(self):

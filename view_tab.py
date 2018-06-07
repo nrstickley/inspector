@@ -153,6 +153,8 @@ class ViewTab(QWidget):
 
         self.inspector.rename_tab(self)
 
+        self.inspector.detector_info_window.update_detector(self.current_dither, self.current_detector)
+
     def show_bounding_box(self, dither, detector, object_id):
         spec = self.inspector.collection.get_spectrum(dither, detector, object_id)
         return self.draw_spec_box(spec)
