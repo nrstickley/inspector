@@ -26,8 +26,6 @@ class AnalysisTab(QWidget):
         layout = QVBoxLayout()
         layout.setSpacing(0)
 
-        self.menubar = self.init_menu()
-
         self.toolbar = self.init_toolbar()
 
         self.mdi = QMdiArea(self)
@@ -46,7 +44,6 @@ class AnalysisTab(QWidget):
 
         # TODO: set color of the MDI area with self.mdi.setBackground()
 
-        layout.addWidget(self.menubar)
         layout.addWidget(self.toolbar)
         layout.addWidget(self.mdi)
 
