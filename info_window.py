@@ -200,6 +200,9 @@ class DetectorInfoWindow(QWidget):
         self.grism_orientation_value.setText(f"{fits_header['GORIENT']:0.5f}")
 
     def update_detector(self, dither, detector):
+        if self._inspector.exposures is None:
+            return
+
         self._dither = dither
         self._detector = detector
         self.fetch_header_info(dither, detector)
@@ -246,5 +249,10 @@ class DetectorInfoWindow(QWidget):
         self.adjustSize()
         self.header_button.setText('Show header')
         self.header_button.pressed.connect(self.show_header)
+
+    def keyPressEvent(self, event):
+
+        if event.key() == Qt.Key_Q or event.key() == Qt.Key_Escape:
+            self.close()
 
 
