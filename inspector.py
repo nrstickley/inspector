@@ -18,12 +18,6 @@ General plan:
  * show all collapsed 1D spectra for the object
  * show wavelength - flux plots for the 4 dithers (along with the J and H band magnitudes)
      - this should show original, decontaminated, and model (if there is a model)
- * show table of contaminants for each dither and each detector? maybe not
-
- New classes to implement:
-
- * InfoWindow for viewing x-y coords, RA, DEC, wavelengths of a specific spectrum, raw values of pixels,
-   flux values of pixels (possibly not necessary)
  """
 
 import sys

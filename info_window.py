@@ -8,6 +8,9 @@ from PyQt5.QtWidgets import QWidget, QLabel, QPushButton, QPlainTextEdit, QGridL
 
 type_name = {1: 'Galaxy', 2: 'Star'}
 
+window_opacity = 0.91
+window_margin = 25
+
 
 def make_label_value_pair(label_text, value, value_format):
     text_label = QLabel(f"{label_text}:")
@@ -23,7 +26,6 @@ class ObjectInfoWindow(QWidget):
 
         self._info = info
         self._inspector = inspector
-        self.setParent(inspector)
 
         layout = QGridLayout()
 
@@ -90,11 +92,11 @@ class ObjectInfoWindow(QWidget):
 
         self.setGeometry(cursor_x, cursor_y, 300, 500)
 
-        self.setContentsMargins(30, 30, 30, 30)
+        self.setContentsMargins(window_margin, window_margin, window_margin, window_margin)
 
         self.adjustSize()
 
-        self.setWindowOpacity(0.8)
+        self.setWindowOpacity(window_opacity)
 
     def keyPressEvent(self, event):
 
@@ -182,11 +184,11 @@ class DetectorInfoWindow(QWidget):
 
         self.setGeometry(cursor_x, cursor_y, 300, 500)
 
-        self.setContentsMargins(30, 30, 30, 30)
+        self.setContentsMargins(window_margin, window_margin, window_margin, window_margin)
 
         self.adjustSize()
 
-        self.setWindowOpacity(0.8)
+        self.setWindowOpacity(window_opacity)
 
     def fetch_header_info(self, dither, detector):
         fits_header = self._inspector.exposures[dither][detector].header
