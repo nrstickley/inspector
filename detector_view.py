@@ -1,6 +1,6 @@
 
 from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import (QGraphicsView, QMenu,)
+from PyQt5.QtWidgets import QGraphicsView, QMenu
 
 from specbox import Rect
 

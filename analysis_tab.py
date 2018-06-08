@@ -2,9 +2,10 @@ import numpy as np
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QMdiArea, QMenuBar, QAction, QToolBar
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QMdiArea, QMenuBar, QAction, QToolBar
 
 from plot_window import PlotWindow
+from detector_selector import MultiDetectorSelector
 
 
 class AnalysisTab(QWidget):
@@ -22,9 +23,21 @@ class AnalysisTab(QWidget):
         self.contents = list()
 
         self.setMouseTracking(True)
+        outer_layout = QHBoxLayout()
+        outer_layout.setSpacing(0)
+        outer_layout.setContentsMargins(5,5,5,5)
 
-        layout = QVBoxLayout()
-        layout.setSpacing(0)
+        #TODO: put 4 of these into a widget with Vbox layout
+
+        selector_1 = MultiDetectorSelector()
+        selector_1.setMinimumWidth(180)
+
+        outer_layout.addWidget(selector_1)
+
+        inner_layout = QVBoxLayout()
+        inner_layout.setSpacing(0)
+
+        outer_layout.addItem(inner_layout)
 
         self.toolbar = self.init_toolbar()
 
@@ -44,10 +57,10 @@ class AnalysisTab(QWidget):
 
         # TODO: set color of the MDI area with self.mdi.setBackground()
 
-        layout.addWidget(self.toolbar)
-        layout.addWidget(self.mdi)
+        inner_layout.addWidget(self.toolbar)
+        inner_layout.addWidget(self.mdi)
 
-        self.setLayout(layout)
+        self.setLayout(outer_layout)
 
     @property
     def object_id(self):
