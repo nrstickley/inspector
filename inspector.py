@@ -175,6 +175,12 @@ class Inspector:
                 for view_tab in self.view_tab:
                     view_tab.selection_area.searchbox.returnPressed.connect(view_tab.select_spectrum)
 
+        if self.collection is None:
+            m = QMessageBox(0, 'Error', 'Encountered error while loading the spectra. Make sure that the correct paths '
+                                        'were specified.')
+            m.exec()
+            return
+
         self.organize_spectra_by_object_id()
 
         self._session['spectra'] = filename
@@ -294,7 +300,7 @@ class Inspector:
     def new_analysis_tab(self, dither, detector, object_id):
         tab = AnalysisTab(self, dither, detector, object_id)
         self.analysis_tab.append(tab)
-        index = self.tabs.addTab(tab, f'{dither}.{detector}.{object_id}')
+        index = self.tabs.addTab(tab, f'Object {object_id}')
         self.tabs.setCurrentIndex(index)
 
     def rename_tab(self, view_tab):

@@ -2,7 +2,7 @@ import numpy as np
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QMdiArea, QMenuBar, QAction, QToolBar
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QGridLayout, QMdiArea, QMenuBar, QAction, QToolBar
 
 from plot_window import PlotWindow
 from detector_selector import MultiDetectorSelector
@@ -23,25 +23,34 @@ class AnalysisTab(QWidget):
         self.contents = list()
 
         self.setMouseTracking(True)
-        outer_layout = QHBoxLayout()
+
+        outer_layout = QGridLayout()
         outer_layout.setSpacing(0)
-        outer_layout.setContentsMargins(5,5,5,5)
+        outer_layout.setContentsMargins(0, 0, 0, 0)
 
         #TODO: put 4 of these into a widget with Vbox layout
 
         selector_1 = MultiDetectorSelector()
         selector_1.setMinimumWidth(180)
 
-        outer_layout.addWidget(selector_1)
+        outer_layout.addWidget(selector_1, 0, 0)
 
-        inner_layout = QVBoxLayout()
+        outer_layout.setContentsMargins(0, 0, 0, 0)
+        outer_layout.setSpacing(0)
+
+        inner_layout = QGridLayout()
         inner_layout.setSpacing(0)
 
-        outer_layout.addItem(inner_layout)
+        outer_layout.addItem(inner_layout, 0, 1)
+
+        outer_layout.setColumnStretch(0, 0)
+        outer_layout.setColumnStretch(1, 10)
 
         self.toolbar = self.init_toolbar()
 
         self.mdi = QMdiArea(self)
+
+        self.mdi.setContentsMargins(0, 0, 0, 0)
 
         ##########
 
