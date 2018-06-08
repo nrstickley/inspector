@@ -3,7 +3,7 @@ from PyQt5.QtCore import Qt, QRectF, QSizeF
 from PyQt5.QtGui import QColor, QBrush, QPen, QFont
 from PyQt5.QtWidgets import (QWidget, QGraphicsView, QGraphicsWidget, QGraphicsScene, QGraphicsGridLayout,
                              QGraphicsSimpleTextItem, QGraphicsRectItem, QGraphicsDropShadowEffect, QVBoxLayout,
-                             QGraphicsLayoutItem)
+                             QGraphicsLayoutItem, QLabel, QGridLayout)
 
 
 def box_id(row, column):
@@ -62,7 +62,6 @@ class DetectorBox(QGraphicsRectItem):
 
         self._label.setBrush(QBrush(QColor('white')))
 
-
     @property
     def detector_id(self):
         return self._detector_id
@@ -98,26 +97,38 @@ class DetectorBox(QGraphicsRectItem):
 
     def place_label(self, rect):
         x_center = 0.5 * (rect.left() + rect.right()) - 6 * len(self._label.text())
-        y_center = 0.5 * (rect.bottom() + rect.top()) - 12
+        y_center = 0.5 * (rect.bottom() + rect.top()) - 11
         self._label.setPos(x_center, y_center)
 
 
 class MultiDetectorSelector(QWidget):
 
-    def __init__(self, *args):
+    def __init__(self, dither, *args):
         super().__init__(*args)
 
         self._boxes = {}  # this will be of the form {detector_number: DetectorBox}
 
         self.gv_layout = QGraphicsGridLayout()
 
-        self.gv_layout.setSpacing(2)
+        self.gv_layout.setSpacing(0)
 
-        self.gv_layout.setMinimumSize(DetectorBox.length * 4 + 6, DetectorBox.length * 4 + 6)
+        min_length = DetectorBox.length * 4 + 6
+
+        self._min_length = min_length
+
+        self._dither = dither
+
+        self.gv_layout.setMinimumSize(min_length, min_length)
+        self.gv_layout.setMaximumSize(min_length, min_length)
+        self.gv_layout.setContentsMargins(0, 0, 0, 0)
+
+        self.setMinimumWidth(min_length)
+        self.setMinimumHeight(min_length)
+
+        self.setMaximumWidth(min_length + 20)
+        self.setMaximumHeight(min_length + 20)
 
         self._init_boxes()
-
-        self.gv_layout.setContentsMargins(0, 0, 0, 0)
 
         gv_widget = QGraphicsWidget()
 
@@ -135,7 +146,9 @@ class MultiDetectorSelector(QWidget):
 
         view.setViewportMargins(0, 0, 0, 0)
 
-        view.setGeometry(0, 0, 230, 230)
+        view.setGeometry(0, 0, min_length, min_length)
+
+        view.setStyleSheet("border: 0px; margin: 0px; padding: 0px;")
 
         view.setScene(scene)
 
@@ -144,6 +157,14 @@ class MultiDetectorSelector(QWidget):
         layout.addWidget(view)
 
         self.setLayout(layout)
+
+    @property
+    def dither(self):
+        return self._dither
+
+    @property
+    def min_length(self):
+        return self._min_length
 
     def _init_boxes(self):
         for row in range(4):
@@ -157,3 +178,34 @@ class MultiDetectorSelector(QWidget):
                 self.gv_layout.setColumnAlignment(column, Qt.AlignCenter)
 
 
+class MultiDitherDetectorSelector(QWidget):
+    def __init__(self, *args):
+        super().__init__(*args)
+
+        self.setStyleSheet("border: 0px; margin: 0px; padding: 0px;")
+
+        layout = QGridLayout()
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+
+        self.dithers = []
+
+        row_index = 0
+        for i in range(4):
+            label = QLabel(f' Dither {i + 1}')
+            selector = MultiDetectorSelector(i + 1)
+            self.dithers.append(selector)
+            layout.addWidget(label, row_index, 0)
+            row_index += 1
+            layout.addWidget(selector, row_index, 0)
+            layout.setRowMinimumHeight(row_index, self.dithers[0].min_length)
+            row_index += 1
+
+        layout.setColumnMinimumWidth(0, self.dithers[0].min_length)
+
+        self.setMaximumWidth(self.dithers[0].min_length + 20)
+        self.setMinimumWidth(self.dithers[0].min_length + 20)
+        self.setMinimumHeight(720)
+        self.setMaximumHeight(720)
+
+        self.setLayout(layout)

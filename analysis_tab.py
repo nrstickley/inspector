@@ -2,10 +2,10 @@ import numpy as np
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QGridLayout, QMdiArea, QMenuBar, QAction, QToolBar
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QGridLayout, QMdiArea, QAction, QToolBar
 
 from plot_window import PlotWindow
-from detector_selector import MultiDetectorSelector
+from detector_selector import MultiDitherDetectorSelector
 
 
 class AnalysisTab(QWidget):
@@ -13,63 +13,50 @@ class AnalysisTab(QWidget):
         super().__init__(*args)
 
         self._inspector = inspector
-
         self._dither = dither
-
         self._detector = detector
-
         self._object_id = object_id
-
         self.contents = list()
-
         self.setMouseTracking(True)
 
-        outer_layout = QGridLayout()
-        outer_layout.setSpacing(0)
-        outer_layout.setContentsMargins(0, 0, 0, 0)
+        # TODO: put 4 of these into a widget with Vbox layout
 
-        #TODO: put 4 of these into a widget with Vbox layout
+        selector_area = MultiDitherDetectorSelector()
 
-        selector_1 = MultiDetectorSelector()
-        selector_1.setMinimumWidth(180)
+        self.mdi = QMdiArea(self)
+        self.mdi.setContentsMargins(0, 0, 0, 0)
 
-        outer_layout.addWidget(selector_1, 0, 0)
+        h_layout = QGridLayout()
+        h_layout.setSpacing(0)
+        h_layout.setContentsMargins(0, 0, 0, 0)
+        h_layout.addWidget(selector_area, 0, 0)
+        h_layout.addWidget(self.mdi, 0, 1)
 
-        outer_layout.setContentsMargins(0, 0, 0, 0)
-        outer_layout.setSpacing(0)
-
-        inner_layout = QGridLayout()
-        inner_layout.setSpacing(0)
-
-        outer_layout.addItem(inner_layout, 0, 1)
-
-        outer_layout.setColumnStretch(0, 0)
-        outer_layout.setColumnStretch(1, 10)
+        h_layout.setColumnStretch(0, 0)
+        h_layout.setColumnStretch(1, 10)
 
         self.toolbar = self.init_toolbar()
 
-        self.mdi = QMdiArea(self)
+        v_layout = QVBoxLayout()
+        v_layout.setSpacing(0)
 
-        self.mdi.setContentsMargins(0, 0, 0, 0)
+        v_layout.addWidget(self.toolbar)
 
-        ##########
+        v_layout.addItem(h_layout)
 
-        spec = inspector.collection.get_spectrum(dither, detector, object_id)
-
-        plot = PlotWindow(f'dither-{dither}, detector-{detector}, object-{object_id}')
-
-        plot.axis.imshow(spec.science)
-
-        sub_window = self.mdi.addSubWindow(plot)
+        self.setLayout(v_layout)
 
         ##########
 
-        # TODO: set color of the MDI area with self.mdi.setBackground()
+        #spec = inspector.collection.get_spectrum(dither, detector, object_id)
 
-        inner_layout.addWidget(self.toolbar)
-        inner_layout.addWidget(self.mdi)
+        #plot = PlotWindow(f'dither-{dither}, detector-{detector}, object-{object_id}')
 
-        self.setLayout(outer_layout)
+        #plot.axis.imshow(spec.science)
+
+        #sub_window = self.mdi.addSubWindow(plot)
+
+        ##########
 
     @property
     def object_id(self):
