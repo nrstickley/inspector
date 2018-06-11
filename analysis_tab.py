@@ -19,9 +19,11 @@ class AnalysisTab(QWidget):
         self.contents = list()
         self.setMouseTracking(True)
 
-        # TODO: put 4 of these into a widget with Vbox layout
+        detectors = self.determine_relevant_detectors(object_id)
 
-        selector_area = MultiDitherDetectorSelector()
+        print(detectors)
+
+        selector_area = MultiDitherDetectorSelector(detectors)
 
         self.mdi = QMdiArea(self)
         self.mdi.setContentsMargins(0, 0, 0, 0)
@@ -36,6 +38,7 @@ class AnalysisTab(QWidget):
         h_layout.setColumnStretch(0, 0)
         h_layout.setColumnStretch(1, 10)
 
+        self.detector_selector = selector_area
         self.toolbar = self.init_toolbar()
 
         v_layout = QVBoxLayout()
@@ -75,11 +78,14 @@ class AnalysisTab(QWidget):
         toolbar = QToolBar()
         toolbar.setMouseTracking(True)
 
+        list_selected_detectors = QAction('list selected', toolbar)
+        list_selected_detectors.triggered.connect(self.print_selected_detectors)
         #show_table = QAction(QIcon('./table_icon.png'), '', toolbar)
         #show_table.setToolTip('show the table of contaminants')
         #show_table.triggered.connect(self.show_info)
 
         #toolbar.addAction(show_table)
+        toolbar.addAction(list_selected_detectors)
 
         return toolbar
 
@@ -88,3 +94,24 @@ class AnalysisTab(QWidget):
 
     def show_info(self):
         print('this is where I would show info')
+
+    def print_selected_detectors(self):
+        selected = self.detector_selector.selected_detectors()
+        for dither, detectors in selected.items():
+            print(f'for detector {dither}, the selected detectors are: {detectors}')
+
+    def determine_relevant_detectors(self, object_id):
+        """
+        returns the detectors in which the spectra of the object can be found, in the format {dither: [detectors]}
+        """
+        detectors = {}
+
+        for dither in self._inspector.spectra[object_id]:
+            detectors[dither] = list(self._inspector.spectra[object_id][dither].keys())
+
+        for d in (1, 2, 3, 4):
+            if d not in detectors:
+                detectors[d] = []
+
+        return detectors
+

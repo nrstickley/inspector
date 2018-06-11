@@ -24,6 +24,7 @@ import sys
 import os
 import json
 
+import numpy as np
 from astropy.io import fits
 
 from PyQt5.QtCore import Qt
@@ -46,7 +47,13 @@ class Inspector:
         self.exposures = None  # this will hold the detectors as a nested map {dither: {detector: pixels}}
         self.spectra = None  # this will hold a map connecting object IDs with spectra, in the format:
                              # {object_id: {dither: {detector: spectrum}}
+
         self.location_tables = None  # this will hold a reader.LocationTable object
+
+        # This will hold a map: {dither: sensitivity_table} where sensitivity_table is a
+        # NumPy array with two rows: wavelength and sensitivity, which is used to convert
+        # from pixel value to erg/s/cm^2/AA
+        self.sensitivities = {i: None for i in (1, 2, 3, 4)}
 
         self.main, self.tabs = self.init_main()
 
@@ -90,7 +97,7 @@ class Inspector:
         file_menu = main_menu.addMenu('File')
 
         load_nisp = QAction('Load Exposures', main_menu)
-        load_nisp.setShortcut('Ctrl+N')
+        load_nisp.setShortcut('Ctrl+E')
         load_nisp.setStatusTip('Load one or more NISP exposures, listed in a JSON file.')
         load_nisp.triggered.connect(self.load_exposures)
 
@@ -103,6 +110,11 @@ class Inspector:
         load_loctab.setShortcut('Ctrl+L')
         load_loctab.setToolTip('Load spectral metadata from the location tables.')
         load_loctab.triggered.connect(self.load_location_tables)
+
+        load_sensitivities = QAction('Load Grism Sensitivities', main_menu)
+        load_sensitivities.setShortcut('Ctrl+G')
+        load_sensitivities.setToolTip('Load flux calibration curves for each grism / dither')
+        load_sensitivities.triggered.connect(self.load_sensitivities)
 
         save_session = QAction('Save Session As...', main_menu)
         save_session.setShortcut('Ctrl+S')
@@ -123,6 +135,8 @@ class Inspector:
         file_menu.addAction(load_decon)
 
         file_menu.addAction(load_loctab)
+
+        file_menu.addAction(load_sensitivities)
 
         file_menu.addSeparator()
 
@@ -166,7 +180,7 @@ class Inspector:
                 self.collection = DecontaminatedSpectraCollection(filename, self.main)
             except:
                 self.collection = None
-                message = QMessageBox(0, 'Error', 'Could not load the spectra. Verify that the file format is correct.')
+                message = QMessageBox(self, 'Error', 'Could not load the spectra. Verify that the file format is correct.')
                 message.exec()
             self.app.restoreOverrideCursor()
 
@@ -176,8 +190,8 @@ class Inspector:
                     view_tab.selection_area.searchbox.returnPressed.connect(view_tab.select_spectrum)
 
         if self.collection is None:
-            m = QMessageBox(0, 'Error', 'Encountered error while loading the spectra. Make sure that the correct paths '
-                                        'were specified.')
+            m = QMessageBox(self, 'Error', 'Encountered error while loading the spectra. Make sure the correct paths '
+                                           'were specified.')
             m.exec()
             return
 
@@ -215,7 +229,7 @@ class Inspector:
             except:
                 magic = ''
             if magic != fits_magic:
-                message = QMessageBox(0, 'File Format Error', f'{exposure_name} is not a FITS file.')
+                message = QMessageBox(self, 'File Format Error', f'{exposure_name} is not a FITS file.')
                 message.exec()
                 self.exposures = None
                 f.close()
@@ -235,7 +249,7 @@ class Inspector:
 
     def load_location_tables(self):
         if not self._loading_session:
-            filename, _ = QFileDialog.getOpenFileName(self.main, caption='Open Decontaminated Spectra', filter='*.json')
+            filename, _ = QFileDialog.getOpenFileName(self.main, caption='Load Decontaminated Spectra', filter='*.json')
         else:
             filename = self._session['location_tables']
             if filename == '':
@@ -253,7 +267,38 @@ class Inspector:
                 message.exec()
             self.app.restoreOverrideCursor()
 
-        self._session['location_tables'] = filename
+            self._session['location_tables'] = filename
+
+    def load_sensitivities(self):
+        if not self._loading_session:
+            filename, _ = QFileDialog.getOpenFileName(self.main, caption='Load grism sensitivities', filter='*.json')
+        else:
+            filename = self._session['grism_sensitivities']
+            if filename == '':
+                return
+
+        if os.path.isfile(filename):
+            # populate self.sensitivities
+
+            with open(filename) as f:
+                sensitivities = json.load(f)
+                if not isinstance(sensitivities, dict):
+                    raise TypeError('')
+                    message = QMessageBox(self, 'Error',
+                                          'The JSON file specifying the sensitivity curves must contain a dictionary.')
+                    message.exec()
+                    return
+                dithers = (1, 2, 3, 4)
+
+                for d in dithers:
+                    if str(d) in sensitivities:
+                        sens_file = sensitivities[str(d)]
+                        full_path = os.path.join(os.path.dirname(filename), 'data', sens_file)
+                        self.sensitivities[d] = np.loadtxt(full_path)
+                    else:
+                        self.sensitivities[d] = None
+
+            self._session['grism_sensitivities'] = filename
 
     def organize_spectra_by_object_id(self):
         """
@@ -324,17 +369,13 @@ class Inspector:
             item.current_dither
             self.detector_info_window.update_detector(item.current_dither, item.current_detector)
 
-
     def save_session(self):
         filename, _ = QFileDialog.getSaveFileName(self.main, caption='Save Session', filter='*.sir')
 
         fields = ['exposures',
                   'spectra',
                   'location_tables',
-                  'grism_1_sens',
-                  'grism_2_sens',
-                  'grism_3_sens',
-                  'grism_4_sens',
+                  'grism_sensitivities',
                   'j_sens',
                   'h_sens']
 
@@ -364,6 +405,7 @@ class Inspector:
         self.load_exposures()
         self.load_spectra()
         self.load_location_tables()
+        self.load_sensitivities()
 
         self._loading_session = False
 

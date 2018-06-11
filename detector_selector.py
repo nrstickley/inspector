@@ -70,6 +70,10 @@ class DetectorBox(QGraphicsRectItem):
     def size(self):
         return self._rect.size()
 
+    @property
+    def selected(self):
+        return self._selected
+
     def hoverEnterEvent(self, event):
         if self._enabled:
             self.setBrush(self.hovered_brush)
@@ -103,8 +107,10 @@ class DetectorBox(QGraphicsRectItem):
 
 class MultiDetectorSelector(QWidget):
 
-    def __init__(self, dither, *args):
+    def __init__(self, dither, detectors, *args):
         super().__init__(*args)
+
+        self._enabled_detectors = detectors
 
         self._boxes = {}  # this will be of the form {detector_number: DetectorBox}
 
@@ -159,7 +165,7 @@ class MultiDetectorSelector(QWidget):
         self.setLayout(layout)
 
     @property
-    def dither(self):
+    def dither_number(self):
         return self._dither
 
     @property
@@ -169,17 +175,26 @@ class MultiDetectorSelector(QWidget):
     def _init_boxes(self):
         for row in range(4):
             for column in range(4):
-                enabled = (row + column) in (0, 2, 4)
+                detector_id = box_id(row, column)
+                enabled = detector_id in self._enabled_detectors
                 box = DetectorBox(row, column, enabled)
-                self._boxes[box.detector_id] = box
+                self._boxes[detector_id] = box
                 box_layout = DetectorBoxLayout(box)
                 self.gv_layout.addItem(box_layout, row, column)
                 self.gv_layout.setRowAlignment(row, Qt.AlignCenter)
                 self.gv_layout.setColumnAlignment(column, Qt.AlignCenter)
 
+    def selected_detectors(self):
+        '''
+        Returns a list of IDs of the selected boxes. If there are no selected boxes, then None is returned
+        '''
+        selected = [box.detector_id for box in self._boxes.values() if box.selected]
+
+        return selected if len(selected) > 0 else None
+
 
 class MultiDitherDetectorSelector(QWidget):
-    def __init__(self, *args):
+    def __init__(self, detectors, *args):
         super().__init__(*args)
 
         self.setStyleSheet("border: 0px; margin: 0px; padding: 0px;")
@@ -193,7 +208,7 @@ class MultiDitherDetectorSelector(QWidget):
         row_index = 0
         for i in range(4):
             label = QLabel(f' Dither {i + 1}')
-            selector = MultiDetectorSelector(i + 1)
+            selector = MultiDetectorSelector(i + 1, detectors[i + 1])
             self.dithers.append(selector)
             layout.addWidget(label, row_index, 0)
             row_index += 1
@@ -209,3 +224,11 @@ class MultiDitherDetectorSelector(QWidget):
         self.setMaximumHeight(720)
 
         self.setLayout(layout)
+
+    def selected_detectors(self):
+        '''
+        Returns the detectors that are currently selected, as a dict: {dither: [detector0, detector1, ... detectorN]}
+        where the dither and detectorN are integers. If a dither contains no selected detectors, None, is returned for
+        the associated dither number. Results might look like this: {1: None, 2: [1, 2], 3: [2], 4: None}
+        '''
+        return {dither.dither_number: dither.selected_detectors() for dither in self.dithers}
