@@ -30,6 +30,7 @@ class AnalysisTab(QWidget):
         h_layout.setSpacing(0)
         h_layout.setContentsMargins(0, 0, 0, 0)
         h_layout.addWidget(selector_area, 0, 0)
+        h_layout.setAlignment(selector_area, Qt.AlignTop)
         h_layout.addWidget(self.mdi, 0, 1)
 
         h_layout.setColumnStretch(0, 0)
@@ -74,11 +75,11 @@ class AnalysisTab(QWidget):
         toolbar = QToolBar()
         toolbar.setMouseTracking(True)
 
-        show_table = QAction(QIcon('./table_icon.png'), '', toolbar)
-        show_table.setToolTip('show the table of contaminants')
-        show_table.triggered.connect(self.show_info)
+        #show_table = QAction(QIcon('./table_icon.png'), '', toolbar)
+        #show_table.setToolTip('show the table of contaminants')
+        #show_table.triggered.connect(self.show_info)
 
-        toolbar.addAction(show_table)
+        #toolbar.addAction(show_table)
 
         return toolbar
 
