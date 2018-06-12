@@ -2,10 +2,44 @@ import numpy as np
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QGridLayout, QMdiArea, QAction, QToolBar
+from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QGridLayout, QMdiArea, QAction, QGroupBox, QPushButton, QRadioButton,
+                             QCheckBox)
 
 from plot_window import PlotWindow
 from detector_selector import MultiDitherDetectorSelector
+
+
+class PlotSelector(QWidget):
+    def __init__(self, analysis_tab, *args):
+        super().__init__(*args)
+
+        self.analysis_tab = analysis_tab
+
+        data_series_group = QGroupBox('Data Series', self)
+        data_series_group.setLayout(QVBoxLayout())  # should be a 2 x 2 grid layout
+        original_check = QCheckBox('Original', data_series_group)
+        decontaminated_check = QCheckBox('Decontaminated', data_series_group)
+        contamination_check = QCheckBox('Contamination', data_series_group)
+        model_check = QCheckBox('Model', data_series_group)
+        data_series_group.layout().addWidget(original_check)
+        data_series_group.layout().addWidget(decontaminated_check)
+        data_series_group.layout().addWidget(contamination_check)
+        data_series_group.layout().addWidget(model_check)
+
+        y_axis_type = QGroupBox('y axis type', self)  # data number vs calibrated flux (radiobuttons)
+
+        x_axis_type = QGroupBox('x axis type', self)  # pixel widths vs wavelength (radiobuttons)
+
+        plot_botton = QPushButton('Make Plot(s)', self) 
+
+        layout = QGridLayout()
+
+        layout.addWidget(data_series_group, 0, 0)
+        layout.addWidget(y_axis_type, 0, 1)
+        layout.addWidget(x_axis_type, 0, 2)
+        layout.addWidget(plot_botton, 0, 3)
+
+        self.setLayout(layout)
 
 
 class AnalysisTab(QWidget):
@@ -19,9 +53,9 @@ class AnalysisTab(QWidget):
         self.contents = list()
         self.setMouseTracking(True)
 
-        detectors = self.determine_relevant_detectors(object_id)
+        self.plot_selector = PlotSelector(self)
 
-        print(detectors)
+        detectors = self.determine_relevant_detectors(object_id)
 
         selector_area = MultiDitherDetectorSelector(detectors)
 
@@ -39,12 +73,11 @@ class AnalysisTab(QWidget):
         h_layout.setColumnStretch(1, 10)
 
         self.detector_selector = selector_area
-        self.toolbar = self.init_toolbar()
 
         v_layout = QVBoxLayout()
         v_layout.setSpacing(0)
 
-        v_layout.addWidget(self.toolbar)
+        v_layout.addWidget(self.plot_selector)
 
         v_layout.addItem(h_layout)
 
@@ -73,21 +106,6 @@ class AnalysisTab(QWidget):
     @property
     def detector(self):
         return self._detector
-
-    def init_toolbar(self):
-        toolbar = QToolBar()
-        toolbar.setMouseTracking(True)
-
-        list_selected_detectors = QAction('list selected', toolbar)
-        list_selected_detectors.triggered.connect(self.print_selected_detectors)
-        #show_table = QAction(QIcon('./table_icon.png'), '', toolbar)
-        #show_table.setToolTip('show the table of contaminants')
-        #show_table.triggered.connect(self.show_info)
-
-        #toolbar.addAction(show_table)
-        toolbar.addAction(list_selected_detectors)
-
-        return toolbar
 
     def make_plot(self):
         print('this is where I would make a plot')
