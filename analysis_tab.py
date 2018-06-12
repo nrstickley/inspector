@@ -67,11 +67,13 @@ class PlotSelector(QWidget):
 
         layout = QGridLayout()
         layout.setSpacing(15)
+        layout.setContentsMargins(10, 0, 10, 10)
 
         layout.addWidget(data_series_group, 0, 0)
         layout.addWidget(y_axis_type, 0, 1)
         layout.addWidget(x_axis_type, 0, 2)
         layout.addLayout(buttons, 0, 3)
+        self.setContentsMargins(8, 0, 8, 8)
 
         self.setLayout(layout)
 
@@ -116,6 +118,7 @@ class AnalysisTab(QWidget):
         v_layout.addItem(h_layout)
 
         self.setLayout(v_layout)
+        self.setContentsMargins(0, 0, 0, 0)
 
         ##########
 
