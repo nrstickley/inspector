@@ -153,10 +153,10 @@ class Rect(QGraphicsRectItem):
 
         menu.addSection(f'Object {self.spec.id}')
 
-        menu.addAction("Open in analysis tab", self.open_analysis_tab)
-        menu.addAction(f"Show in all detectors", self.open_all_spectra)
-        menu.addAction("Show Object Info", self.show_info)
         menu.addAction(table_of_contaminants)
+        menu.addAction("Show object info", self.show_info)
+        menu.addAction("Open object tab", self.open_analysis_tab)
+        menu.addAction(f"Show object in all detectors", self.open_all_spectra)
 
         menu.addSection('Plots')
 
