@@ -3,6 +3,7 @@ import h5py
 import json
 
 import numpy as np
+from scipy.interpolate import UnivariateSpline as splineinterp
 
 from PyQt5.QtWidgets import QProgressDialog
 from PyQt5.QtCore import QEventLoop
@@ -36,6 +37,92 @@ NISP_DETECTOR_MAP = {1: '11',
 DETECTOR_ID = {val: key for key, val in NISP_DETECTOR_MAP.items()}
 
 
+class DispersionSolution:
+    __slots__ = ['_x_coeffs', '_y_coeffs', '_reference_wav', '_reference_pos', '_dispersion_solution']
+
+    def __init__(self):
+        self._x_coeffs = None
+        self._y_coeffs = None
+        self._reference_wav = None
+        self._reference_pos = None
+        self._dispersion_solution = None
+
+    @property
+    def x_coeffs(self):
+        return self._x_coeffs
+
+    @x_coeffs.setter
+    def x_coeffs(self, coeffs):
+        self._x_coeffs = coeffs
+
+    @property
+    def y_coeffs(self):
+        return self._y_coeffs
+
+    @y_coeffs.setter
+    def y_coeffs(self, coeffs):
+        self._y_coeffs = coeffs
+
+    @property
+    def reference_wavelength(self):
+        return self._reference_wav
+
+    @reference_wavelength.setter
+    def reference_wavelength(self, wav):
+        self._reference_wav = wav
+
+    @property
+    def reference_position(self):
+        return self._reference_pos
+
+    @reference_position.setter
+    def reference_position(self, pos):
+        self._reference_pos = pos
+
+    def compute_position(self, wav: float):
+        dl = wav - self._reference_wav
+
+        dl_power = 1
+
+        x_pos = np.copy(self._reference_pos[:, 0])
+        y_pos = np.copy(self._reference_pos[:, 1])
+
+        for i in range(self._x_coeffs.shape[1]):
+            x_pos += self._x_coeffs[:, i] * dl_power
+            dl_power *= dl
+
+        dl_power = 1
+
+        for i in range(self._y_coeffs.shape[1]):
+            y_pos += self._y_coeffs[:, i] * dl_power
+            dl_power *= dl
+
+        return np.column_stack((x_pos, y_pos))
+
+    def compute_wavelength(self, pos):
+        """
+        computes the approximate wavelength at the specified position, where the position is a float corresponding
+        to the x coordinate of a pixel, if the dispersion is horizontal or the y coordinate of a pixel, if the
+        dispersion is vertical.
+        """
+        if self._dispersion_solution is None:
+            # compute the dispersion solution along the approximate mid-line of the spectrum.
+
+            endpoints = [self.compute_position(w).mean(axis=0) for w in (10000, 20000)]
+            displacement = endpoints[1] - endpoints[0]
+            horizontal = (abs(displacement[0]) > abs(displacement[1]))
+            axis = 0 if horizontal else 1
+            center_index = endpoints[0].shape[0] // 2
+
+            wavelengths = np.arange(10000, 20000, 0.25)
+
+            pixels = np.array([self.compute_position(w)[center_index, axis] for w in wavelengths])
+
+            self._dispersion_solution = splineinterp(pixels, wavelengths, k=2, s=0.0)
+
+        return self._dispersion_solution(pos)
+
+
 class DecontaminatedSpectrum:
     """
     A struct-like class for storing the decontamination products for a single spectrum.
@@ -46,6 +133,7 @@ class DecontaminatedSpectrum:
                  '_mask',           # [NumPy ndarray] Mask layer, containing decontamination flags
                  '_contamination',  # [NumPy ndarray] The total contamination for this spectrum.
                  '_contaminants',   # [NumPy ndarray] A table listing contaminants (id, order).
+                 '_solution',       # [DispersionSolution] Contains inverse dispersion solution, etc.
                  '_x_offset',       # [int] x-coordinate of the lower-left pixel of the cutout
                  '_y_offset']       # [int] y-coordinate of the lower-left pixel of the cutout
 
@@ -60,6 +148,7 @@ class DecontaminatedSpectrum:
         self._mask = None
         self._contamination = None
         self._contaminants = None
+        self._solution = None
         self._x_offset = None
         self._y_offset = None
 
@@ -139,6 +228,20 @@ class DecontaminatedSpectrum:
     @contaminants.setter
     def contaminants(self, contams):
         self._contaminants = contams
+
+    @property
+    def solution(self):
+        """
+        The DispersionSolution object for this spectrum, containing inverse dispersion solution and
+        other data that was present in the LocationTable [DispersionSolution].
+        """
+        return self._solution
+
+    @solution.setter
+    def solution(self, sol):
+        if not isinstance(sol, DispersionSolution):
+            raise TypeError('Expected a DispersionSolution object.')
+        self._solution = sol
 
     @property
     def x_offset(self):
@@ -609,8 +712,19 @@ class DecontaminatedSpectraCollection:
 
         object_id = group.attrs['object_id']
 
-        # now create the LocationSpectrum and DecontaminatedSpectrum objects, filling in the attributes, making
+        location_group = group['location']
+
+        reference_position = location_group['ref_position']
+
+        # now create the DispersionSolution and DecontaminatedSpectrum objects, filling in the attributes, making
         # sure to convert to the correct data type.
+
+        sol = DispersionSolution()
+
+        sol.x_coeffs = np.array(location_group['x_coeffs'])
+        sol.y_coeffs = np.array(location_group['y_coeffs'])
+        sol.reference_wavelength = float(reference_position.attrs['ref_wavelength'])
+        sol.reference_position = np.array(reference_position)
 
         spec = DecontaminatedSpectrum()
 
@@ -621,6 +735,7 @@ class DecontaminatedSpectraCollection:
         spec.variance = np.array(group['variance'])
         spec.mask = np.array(group['mask'])
         spec.contaminants = np.array(group['contaminants'])
+        spec.solution = sol
         spec.contamination = np.zeros_like(spec.science)
 
         self._hdf5_spectra[dither][detector][object_id] = spec
