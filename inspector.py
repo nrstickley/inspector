@@ -4,20 +4,10 @@
 General plan:
 
  * show zeroth order contaminant boxes.
-
- * make customizable plots that can be added to the analysis tab?
  * add the ability to to compute wavelengths
  * add the ability to to convert to physical flux values
- * in blank tabs, show a note about using the file menu or Ctrl+N to load exposures.
+ * in blank tabs, show a note about using the file menu or Ctrl+E to load exposures.
 
- In the analysis tab:
-
- * load grism sensitivity / calibration vector (1 for each dither)
- * load load j and h sensitivities
- * show all 2D spectra for the object
- * show all collapsed 1D spectra for the object
- * show wavelength - flux plots for the 4 dithers (along with the J and H band magnitudes)
-     - this should show original, decontaminated, and model (if there is a model)
  """
 
 import sys

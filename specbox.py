@@ -359,7 +359,7 @@ class Rect(QGraphicsRectItem):
         # pin the object in all tabs:
 
         for tab_index in range(inspector.tabs.count()):
-            if isinstance(tab, type(view_tab)):
+            if isinstance(tab, type(view_tab)):  # FIXME: this is broken. Doesn't work when an object (analysis tab) is open.
                 inspector.tabs.widget(tab_index).select_spectrum_by_id(self.spec.id)
 
     def show_info(self):

@@ -36,7 +36,7 @@ class PlotSelector(QWidget):
         y_axis_type.setAlignment(Qt.AlignCenter)
         y_axis_type.setMaximumWidth(300)
         y_axis_type.setMinimumWidth(200)
-        data_number_radio = QRadioButton('Data Number', y_axis_type)
+        data_number_radio = QRadioButton('Image Units', y_axis_type)
         calibrated_flux_radio = QRadioButton('Calibrated Flux', y_axis_type)
         calibrated_flux_radio.setChecked(True)
         y_axis_type.setLayout(QVBoxLayout())
