@@ -122,13 +122,24 @@ class AnalysisTab(QWidget):
 
         ##########
 
-        #spec = inspector.collection.get_spectrum(dither, detector, object_id)
+        spec = inspector.collection.get_spectrum(dither, detector, object_id)
 
-        #plot = PlotWindow(f'dither-{dither}, detector-{detector}, object-{object_id}')
+        plot = PlotWindow(f'dither-{dither}, detector-{detector}, object-{object_id}')
 
-        #plot.axis.imshow(spec.science)
+        if spec.solution.dispersion_orientation() == 0:
+            pixels = spec.x_offset + np.arange(0, spec.science.shape[1])
+            wavelengths = spec.solution.compute_wavelength(pixels)
+            axis = 0
+        else:
+            pixels = spec.y_offset + np.arange(0, spec.science.shape[0])
+            wavelengths = spec.solution.compute_wavelength(pixels)
+            axis = 1
 
-        #sub_window = self.mdi.addSubWindow(plot)
+        plot.axis.plot(wavelengths, spec.science.sum(axis), linewidth=0.5, color='k')
+        plot.axis.set_xlabel('Wavelength ($\AA$)')
+        plot.axis.set_ylabel('Pixel sums')
+
+        sub_window = self.mdi.addSubWindow(plot)
 
         ##########
 

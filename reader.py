@@ -40,6 +40,9 @@ DETECTOR_ID = {val: key for key, val in NISP_DETECTOR_MAP.items()}
 class DispersionSolution:
     __slots__ = ['_x_coeffs', '_y_coeffs', '_reference_wav', '_reference_pos', '_dispersion_solution']
 
+    HORIZONTAL = 0
+    VERTICAL = 1
+
     def __init__(self):
         self._x_coeffs = None
         self._y_coeffs = None
@@ -79,7 +82,13 @@ class DispersionSolution:
     def reference_position(self, pos):
         self._reference_pos = pos
 
+    def fully_constructed(self):
+        return all(a is not None for a in (self._x_coeffs, self._y_coeffs, self._reference_wav, self._reference_pos))
+
     def compute_position(self, wav: float):
+        if not self.fully_constructed():
+            raise RuntimeError(f'{type(self)} object has not been fully constructed.')
+
         dl = wav - self._reference_wav
 
         dl_power = 1
@@ -118,9 +127,23 @@ class DispersionSolution:
 
             pixels = np.array([self.compute_position(w)[center_index, axis] for w in wavelengths])
 
+            if pixels[1] < pixels[0]:
+                wavelengths = np.flip(wavelengths, axis=0)
+                pixels = np.flip(pixels, axis=0)
+
             self._dispersion_solution = splineinterp(pixels, wavelengths, k=2, s=0.0)
 
         return self._dispersion_solution(pos)
+
+    def dispersion_orientation(self):
+        if not self.fully_constructed():
+            raise RuntimeError(f'{type(self)} object has not been fully constructed.')
+
+        endpoints = [self.compute_position(w).mean(axis=0) for w in (10000, 20000)]
+        displacement = endpoints[1] - endpoints[0]
+        horizontal = (abs(displacement[0]) > abs(displacement[1]))
+
+        return self.HORIZONTAL if horizontal else self.VERTICAL
 
 
 class DecontaminatedSpectrum:
