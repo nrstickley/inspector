@@ -57,7 +57,9 @@ class Rect(QGraphicsRectItem):
                               Qt.Key_O:    self.show_original,
                               Qt.Key_A:    self.show_all_layers,
                               Qt.Key_M:    self.show_model,
-                              Qt.Key_I:    self.show_info}
+                              Qt.Key_I:    self.show_info,
+                              Qt.Key_Home: self.open_analysis_tab,
+                              Qt.Key_Space: self.open_all_spectra}
 
     @property
     def spec(self):
@@ -143,26 +145,94 @@ class Rect(QGraphicsRectItem):
         table_of_contaminants.setShortcutVisibleInContextMenu(True)
         table_of_contaminants.triggered.connect(self.show_contaminant_table)
 
+        object_info = QAction('Show Object Info')
+        object_info.setStatusTip('Show details about this object')
+        object_info.setShortcut('I')
+        object_info.setShortcutVisibleInContextMenu(True)
+        object_info.triggered.connect(self.show_info)
+
+        object_tab = QAction('Open Object tab')
+        object_tab.setShortcut(Qt.Key_Home)
+        object_tab.setShortcutVisibleInContextMenu(True)
+        object_tab.triggered.connect(self.open_analysis_tab)
+
+        show_in_all = QAction('Show in all detectors')
+        show_in_all.setStatusTip('Show this object in all detectors')
+        show_in_all.setShortcut(Qt.Key_Space)
+        show_in_all.setShortcutVisibleInContextMenu(True)
+        show_in_all.triggered.connect(self.open_all_spectra)
+
+        show_all_layers = QAction('Show all layers')
+        show_all_layers.setShortcut('A')
+        show_all_layers.setShortcutVisibleInContextMenu(True)
+        show_all_layers.triggered.connect(self.show_all_layers)
+
+        # show_decon = QAction()
+        # show_decon.setStatusTip()
+        # show_decon.setShortcut()
+        # show_decon.setShortcutVisibleInContextMenu(True)
+        # show_decon.triggered.connect(self.)
+        #
+        # show_original = QAction()
+        # show_original.setStatusTip()
+        # show_original.setShortcut()
+        # show_original.setShortcutVisibleInContextMenu(True)
+        # show_original.triggered.connect(self.)
+        #
+        # show_contamination = QAction()
+        # show_contamination.setStatusTip()
+        # show_contamination.setShortcut()
+        # show_contamination.setShortcutVisibleInContextMenu(True)
+        # show_contamination.triggered.connect(self.)
+        #
+        # show_variance = QAction()
+        # show_variance.setStatusTip()
+        # show_variance.setShortcut()
+        # show_variance.setShortcutVisibleInContextMenu(True)
+        # show_variance.triggered.connect(self.)
+        #
+        # show_zeroth = QAction()
+        # show_zeroth.setStatusTip()
+        # show_zeroth.setShortcut()
+        # show_zeroth.setShortcutVisibleInContextMenu(True)
+        # show_zeroth.triggered.connect(self.)
+        #
+        # show_residual = QAction()
+        # show_residual.setStatusTip()
+        # show_residual.setShortcut()
+        # show_residual.setShortcutVisibleInContextMenu(True)
+        # show_residual.triggered.connect(self.)
+        #
+        # show_model = QAction()
+        # show_model.setStatusTip()
+        # show_model.setShortcut()
+        # show_model.setShortcutVisibleInContextMenu(True)
+        # show_model.triggered.connect(self.)
+
         plot_columns = QAction('Plot column sums', menu)
         plot_columns.setStatusTip('Plot the sums of the columns of pixels in the 2D spectrum.')
+        plot_columns.setShortcut(Qt.Key_Up)
+        plot_columns.setShortcutVisibleInContextMenu(True)
         plot_columns.triggered.connect(self.plot_column_sums)
 
         plot_rows = QAction('Plot row sums', menu)
         plot_rows.setStatusTip('Plot the sums of the rows of pixels in the 2D spectrum.')
+        plot_rows.setShortcut(Qt.Key_Right)
+        plot_rows.setShortcutVisibleInContextMenu(True)
         plot_rows.triggered.connect(self.plot_row_sums)
 
         menu.addSection(f'Object {self.spec.id}')
 
         menu.addAction(table_of_contaminants)
-        menu.addAction("Show object info", self.show_info)
-        menu.addAction("Open object tab", self.open_analysis_tab)
-        menu.addAction(f"Show object in all detectors", self.open_all_spectra)
+        menu.addAction(object_info)
+        menu.addAction(object_tab)
+        menu.addAction(show_in_all)
 
         menu.addSection('Plots')
 
         menu.addAction(plot_columns)
         menu.addAction(plot_rows)
-        menu.addAction("Show all layers", self.show_all_layers)
+        menu.addAction(show_all_layers)
         menu.addAction("Show decontaminated spectrum", self.show_decontaminated)
         menu.addAction("Show original spectrum", self.show_original)
         menu.addAction("Show contamination", self.show_contamination)
@@ -349,18 +419,19 @@ class Rect(QGraphicsRectItem):
             if isinstance(tab, type(view_tab)):
                 open_detectors.append((tab.current_dither, tab.current_detector))
 
+        # open new tabs, where necessary
+
         for dither in inspector.get_object_dithers(self.spec.id):
             for detector in inspector.get_object_detectors(dither, self.spec.id):
-                current_dither = view_tab.current_dither
-                current_detector = view_tab.current_detector
                 if (dither, detector) not in open_detectors:
                     inspector.new_view_tab(dither, detector)
 
         # pin the object in all tabs:
 
         for tab_index in range(inspector.tabs.count()):
-            if isinstance(tab, type(view_tab)):  # FIXME: this is broken. Doesn't work when an object (analysis tab) is open.
-                inspector.tabs.widget(tab_index).select_spectrum_by_id(self.spec.id)
+            tab = inspector.tabs.widget(tab_index)
+            if isinstance(tab, type(view_tab)):
+                tab.select_spectrum_by_id(self.spec.id)
 
     def show_info(self):
 

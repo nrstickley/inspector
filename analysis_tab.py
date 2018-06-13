@@ -120,7 +120,7 @@ class AnalysisTab(QWidget):
         self.setLayout(v_layout)
         self.setContentsMargins(0, 0, 0, 0)
 
-        ##########
+        ########## example #########
 
         spec = inspector.collection.get_spectrum(dither, detector, object_id)
 
