@@ -1,5 +1,5 @@
 
-from PyQt5.QtCore import Qt, QRectF, QSizeF
+from PyQt5.QtCore import Qt, QRectF, QSizeF, pyqtSignal, QObject
 from PyQt5.QtGui import QColor, QBrush, QPen, QFont
 from PyQt5.QtWidgets import (QWidget, QGraphicsView, QGraphicsWidget, QGraphicsScene, QGraphicsGridLayout,
                              QGraphicsSimpleTextItem, QGraphicsRectItem, QGraphicsDropShadowEffect, QVBoxLayout,
@@ -62,6 +62,8 @@ class DetectorBox(QGraphicsRectItem):
 
         self._label.setBrush(QBrush(QColor('white')))
 
+        self._detector_selector = None
+
     @property
     def detector_id(self):
         return self._detector_id
@@ -73,6 +75,9 @@ class DetectorBox(QGraphicsRectItem):
     @property
     def selected(self):
         return self._selected
+
+    def set_parent_selector(self, parent):
+        self._detector_selector = parent
 
     def hoverEnterEvent(self, event):
         if self._enabled:
@@ -99,6 +104,8 @@ class DetectorBox(QGraphicsRectItem):
                     self.setBrush(self.enabled_brush)
                     self.setPen(self.invisible_pen)
 
+            self._detector_selector.selection_changed()
+
     def place_label(self, rect):
         x_center = 0.5 * (rect.left() + rect.right()) - 6 * len(self._label.text())
         y_center = 0.5 * (rect.bottom() + rect.top()) - 11
@@ -106,6 +113,8 @@ class DetectorBox(QGraphicsRectItem):
 
 
 class MultiDetectorSelector(QWidget):
+
+    updated = pyqtSignal()
 
     def __init__(self, dither, detectors, *args):
         super().__init__(*args)
@@ -178,6 +187,7 @@ class MultiDetectorSelector(QWidget):
                 detector_id = box_id(row, column)
                 enabled = detector_id in self._enabled_detectors
                 box = DetectorBox(row, column, enabled)
+                box.set_parent_selector(self)
                 self._boxes[detector_id] = box
                 box_layout = DetectorBoxLayout(box)
                 self.gv_layout.addItem(box_layout, row, column)
@@ -192,8 +202,14 @@ class MultiDetectorSelector(QWidget):
 
         return selected if len(selected) > 0 else None
 
+    def selection_changed(self):
+        self.updated.emit()
+
 
 class MultiDitherDetectorSelector(QWidget):
+
+    updated = pyqtSignal()
+
     def __init__(self, detectors, *args):
         super().__init__(*args)
 
@@ -209,6 +225,7 @@ class MultiDitherDetectorSelector(QWidget):
         for i in range(4):
             label = QLabel(f' Dither {i + 1}')
             selector = MultiDetectorSelector(i + 1, detectors[i + 1])
+            selector.updated.connect(self.detectors_updated)
             self.dithers.append(selector)
             layout.addWidget(label, row_index, 0)
             row_index += 1
@@ -232,3 +249,6 @@ class MultiDitherDetectorSelector(QWidget):
         the associated dither number. Results might look like this: {1: None, 2: [1, 2], 3: [2], 4: None}
         '''
         return {dither.dither_number: dither.selected_detectors() for dither in self.dithers}
+
+    def detectors_updated(self):
+        self.updated.emit()

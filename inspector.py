@@ -22,7 +22,7 @@ from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QTabWidget, QFileDialog, QAction, QMessageBox)
 
 from view_tab import ViewTab
-from analysis_tab import AnalysisTab
+from object_tab import ObjectTab
 from info_window import DetectorInfoWindow
 
 from reader import DecontaminatedSpectraCollection, LocationTable, NISP_DETECTOR_MAP
@@ -315,7 +315,17 @@ class Inspector:
 
     def show_info(self):
         if self.exposures is not None:
-            self._detector_info_window.show()
+            # determine which type of tab is open. If it is a detector tab, show the detector info.
+            # if it is an Object tab, show object info
+            tab = self.tabs.widget(self.tabs.currentIndex())
+            if isinstance(tab, ViewTab):
+                self._detector_info_window.show()
+            elif isinstance(tab, ObjectTab):
+                tab.show_info()
+                m = QMessageBox(0, 'Not Implemented',
+                                "This feature had not been implemented yet. An info window will display here",
+                                QMessageBox.NoButton)
+                m.exec()
 
     def new_view_tab(self, dither=None, detector=None):
         new_view_tab = ViewTab(inspector)
@@ -333,7 +343,7 @@ class Inspector:
             self.rename_tab(new_view_tab)
 
     def new_analysis_tab(self, dither, detector, object_id):
-        tab = AnalysisTab(self, dither, detector, object_id)
+        tab = ObjectTab(self, dither, detector, object_id)
         self.analysis_tab.append(tab)
         index = self.tabs.addTab(tab, f'Object {object_id}')
         self.tabs.setCurrentIndex(index)

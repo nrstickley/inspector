@@ -138,108 +138,37 @@ class Rect(QGraphicsRectItem):
     def handle_right_click(self, pos):
         menu = QMenu()
 
-        table_of_contaminants = QAction('Show table of contaminants')
-        table_of_contaminants.setStatusTip('Show a table containing information about the spectra that '
-                                           'contaminate this source.')
-        table_of_contaminants.setShortcut('T')
-        table_of_contaminants.setShortcutVisibleInContextMenu(True)
-        table_of_contaminants.triggered.connect(self.show_contaminant_table)
+        def action(title, slot, caption=None, shortcut=None):
+            act = QAction(title, menu)
+            act.triggered.connect(slot)
+            if caption is not None:
+                act.setStatusTip(caption)
 
-        object_info = QAction('Show Object Info')
-        object_info.setStatusTip('Show details about this object')
-        object_info.setShortcut('I')
-        object_info.setShortcutVisibleInContextMenu(True)
-        object_info.triggered.connect(self.show_info)
-
-        object_tab = QAction('Open Object tab')
-        object_tab.setShortcut(Qt.Key_Home)
-        object_tab.setShortcutVisibleInContextMenu(True)
-        object_tab.triggered.connect(self.open_analysis_tab)
-
-        show_in_all = QAction('Show in all detectors')
-        show_in_all.setStatusTip('Show this object in all detectors')
-        show_in_all.setShortcut(Qt.Key_Space)
-        show_in_all.setShortcutVisibleInContextMenu(True)
-        show_in_all.triggered.connect(self.open_all_spectra)
-
-        show_all_layers = QAction('Show all layers')
-        show_all_layers.setShortcut('A')
-        show_all_layers.setShortcutVisibleInContextMenu(True)
-        show_all_layers.triggered.connect(self.show_all_layers)
-
-        # show_decon = QAction()
-        # show_decon.setStatusTip()
-        # show_decon.setShortcut()
-        # show_decon.setShortcutVisibleInContextMenu(True)
-        # show_decon.triggered.connect(self.)
-        #
-        # show_original = QAction()
-        # show_original.setStatusTip()
-        # show_original.setShortcut()
-        # show_original.setShortcutVisibleInContextMenu(True)
-        # show_original.triggered.connect(self.)
-        #
-        # show_contamination = QAction()
-        # show_contamination.setStatusTip()
-        # show_contamination.setShortcut()
-        # show_contamination.setShortcutVisibleInContextMenu(True)
-        # show_contamination.triggered.connect(self.)
-        #
-        # show_variance = QAction()
-        # show_variance.setStatusTip()
-        # show_variance.setShortcut()
-        # show_variance.setShortcutVisibleInContextMenu(True)
-        # show_variance.triggered.connect(self.)
-        #
-        # show_zeroth = QAction()
-        # show_zeroth.setStatusTip()
-        # show_zeroth.setShortcut()
-        # show_zeroth.setShortcutVisibleInContextMenu(True)
-        # show_zeroth.triggered.connect(self.)
-        #
-        # show_residual = QAction()
-        # show_residual.setStatusTip()
-        # show_residual.setShortcut()
-        # show_residual.setShortcutVisibleInContextMenu(True)
-        # show_residual.triggered.connect(self.)
-        #
-        # show_model = QAction()
-        # show_model.setStatusTip()
-        # show_model.setShortcut()
-        # show_model.setShortcutVisibleInContextMenu(True)
-        # show_model.triggered.connect(self.)
-
-        plot_columns = QAction('Plot column sums', menu)
-        plot_columns.setStatusTip('Plot the sums of the columns of pixels in the 2D spectrum.')
-        plot_columns.setShortcut(Qt.Key_Up)
-        plot_columns.setShortcutVisibleInContextMenu(True)
-        plot_columns.triggered.connect(self.plot_column_sums)
-
-        plot_rows = QAction('Plot row sums', menu)
-        plot_rows.setStatusTip('Plot the sums of the rows of pixels in the 2D spectrum.')
-        plot_rows.setShortcut(Qt.Key_Right)
-        plot_rows.setShortcutVisibleInContextMenu(True)
-        plot_rows.triggered.connect(self.plot_row_sums)
+            if shortcut is not None:
+                act.setShortcut(shortcut)
+                act.setShortcutVisibleInContextMenu(True)
+            return act
 
         menu.addSection(f'Object {self.spec.id}')
 
-        menu.addAction(table_of_contaminants)
-        menu.addAction(object_info)
-        menu.addAction(object_tab)
-        menu.addAction(show_in_all)
+        menu.addAction(action('Show table of contaminants', self.show_contaminant_table, shortcut='T'))
+        menu.addAction(action('Show Object Info', self.show_info, 'Show details about this object', 'I'))
+        menu.addAction(action('Open Object tab', self.open_analysis_tab, shortcut=Qt.Key_Home))
+        menu.addAction(action('Show in all detectors',  self.open_all_spectra, 'Show all spectra of object in new tabs',
+                              Qt.Key_Space))
 
         menu.addSection('Plots')
 
-        menu.addAction(plot_columns)
-        menu.addAction(plot_rows)
-        menu.addAction(show_all_layers)
-        menu.addAction("Show decontaminated spectrum", self.show_decontaminated)
-        menu.addAction("Show original spectrum", self.show_original)
-        menu.addAction("Show contamination", self.show_contamination)
-        menu.addAction("Show decontaminated variance", self.show_variance)
-        menu.addAction("Show zeroth-order positions", self.show_zeroth_orders)
-        menu.addAction("Show residual", self.show_residual)
-        menu.addAction("Show model spectrum", self.show_model)
+        menu.addAction(action('Plot column sums', self.plot_column_sums, shortcut=Qt.Key_Up))
+        menu.addAction(action('Plot row sums', self.plot_row_sums, shortcut=Qt.Key_Right))
+        menu.addAction(action('Show all layers', self.show_all_layers, shortcut='A'))
+        menu.addAction(action('Show decontaminated spectrum', self.show_decontaminated, shortcut='D'))
+        menu.addAction(action('Show original spectrum', self.show_original, shortcut='O'))
+        menu.addAction(action('Show contamination', self.show_contamination, shortcut='C'))
+        menu.addAction(action('Show variance', self.show_variance, shortcut='V'))
+        menu.addAction(action('Show zeroth-order positions', self.show_zeroth_orders, shortcut=Qt.Key_Z|Qt.Key_0))
+        menu.addAction(action('Show residual', self.show_residual, shortcut='R'))
+        menu.addAction(action('Show model spectrum', self.show_model, shortcut='M'))
 
         menu.exec(pos)
 
@@ -448,5 +377,4 @@ class Rect(QGraphicsRectItem):
             m = QMessageBox(0, 'No Object info available',
                             "Location tables containing the requested information must be loaded before showing info.",
                             QMessageBox.NoButton)
-            m.setWindowFlag(Qt.Window, True)
             m.exec()
