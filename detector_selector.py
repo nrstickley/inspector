@@ -1,5 +1,5 @@
 
-from PyQt5.QtCore import Qt, QRectF, QSizeF, pyqtSignal, QObject
+from PyQt5.QtCore import Qt, QRectF, pyqtSignal
 from PyQt5.QtGui import QColor, QBrush, QPen, QFont
 from PyQt5.QtWidgets import (QWidget, QGraphicsView, QGraphicsWidget, QGraphicsScene, QGraphicsGridLayout,
                              QGraphicsSimpleTextItem, QGraphicsRectItem, QGraphicsDropShadowEffect, QVBoxLayout,

@@ -248,6 +248,9 @@ class SpecPlot:
         plot.axis.set_ylabel(y_label)
         plot.axis.legend()
 
+        # set the descriptor; a string in the format: id.dither.detector.data_series.y_type.x_type
+        plot.descriptor = f'{self._object_id}.{dither}.{detector}.{self._data_series}.{self._y_type}.{self._x_type}'
+
         return plot
 
 
@@ -295,6 +298,8 @@ class ObjectTab(QWidget):
         self.setContentsMargins(0, 0, 0, 0)
         self._spec_plots = None
 
+        self._plot_descriptors = set()
+
     @property
     def object_id(self):
         return self._object_id
@@ -311,9 +316,12 @@ class ObjectTab(QWidget):
         self._spec_plots = SpecPlot(self._inspector, self.plot_selector, self.detector_selector)
         self._spec_plots.make_plots(self._object_id)
         for window in self._spec_plots.windows:
-            self.mdi.addSubWindow(window)
-            window.activateWindow()
-            window.show()
+            if window.descriptor not in self._plot_descriptors:
+                self.mdi.addSubWindow(window)
+                self._plot_descriptors.add(window.descriptor)
+                window.closing.connect(self.handle_closed_subwindow)
+                window.activateWindow()
+                window.show()
 
     def show_info(self):
         print('this is where I would show info')
@@ -342,3 +350,7 @@ class ObjectTab(QWidget):
         else:
             self.plot_selector.detector_button.setEnabled(True)
             self.plot_selector.plot_button.setEnabled(True)
+
+    def handle_closed_subwindow(self, descriptor):
+        print(descriptor)
+        self._plot_descriptors.remove(descriptor)

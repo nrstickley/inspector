@@ -3,7 +3,7 @@
 """
 General plan:
 
- * prevent the same plot from being generated more than once.
+ * enable the 'Show Detectors' button to work as expected.
  * add the ability to to convert to physical flux values
  * show object info window when viewing object tab.
  * show zeroth order contaminant boxes.

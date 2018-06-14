@@ -1,4 +1,4 @@
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtWidgets import QWidget, QVBoxLayout
 import matplotlib
 
@@ -10,6 +10,9 @@ from matplotlib import pyplot as plt
 
 
 class PlotWindow(QWidget):
+
+    closing = pyqtSignal([str])
+
     def __init__(self, title, shape=None, *args):
         super().__init__(*args)
 
@@ -17,6 +20,7 @@ class PlotWindow(QWidget):
         self.setWindowFlag(Qt.WindowStaysOnTopHint, True)
         self.setWindowFlag(Qt.Window, True)
         self.setContentsMargins(0, 0, 0, 0)
+        self._descriptor = ''
 
         layout = QVBoxLayout()
         layout.setContentsMargins(0, 0, 0, 0)
@@ -43,7 +47,23 @@ class PlotWindow(QWidget):
 
         self.setLayout(layout)
 
+    @property
+    def descriptor(self):
+        return self._descriptor
+
+    @descriptor.setter
+    def descriptor(self, descriptor):
+        if not isinstance(descriptor, str):
+            raise TypeError('The descriptor must be a string.')
+
+        self._descriptor = descriptor
+
     def keyPressEvent(self, event):
 
         if event.key() == Qt.Key_Q or event.key() == Qt.Key_Escape:
             self.close()
+
+    def closeEvent(self, event):
+        self.closing.emit(self._descriptor)
+        plt.close(self.fig)
+        super().closeEvent(event)
