@@ -170,7 +170,7 @@ class Inspector:
                 self.collection = DecontaminatedSpectraCollection(filename, self.main)
             except:
                 self.collection = None
-                message = QMessageBox(self, 'Error', 'Could not load the spectra. Verify that the file format is correct.')
+                message = QMessageBox(0, 'Error', 'Could not load the spectra. Verify that the file format is correct.')
                 message.exec()
             self.app.restoreOverrideCursor()
 
@@ -180,7 +180,7 @@ class Inspector:
                     view_tab.selection_area.searchbox.returnPressed.connect(view_tab.select_spectrum)
 
         if self.collection is None:
-            m = QMessageBox(self, 'Error', 'Encountered error while loading the spectra. Make sure the correct paths '
+            m = QMessageBox(0, 'Error', 'Encountered error while loading the spectra. Make sure the correct paths '
                                            'were specified.')
             m.exec()
             return
@@ -219,7 +219,7 @@ class Inspector:
             except:
                 magic = ''
             if magic != fits_magic:
-                message = QMessageBox(self, 'File Format Error', f'{exposure_name} is not a FITS file.')
+                message = QMessageBox(0, 'File Format Error', f'{exposure_name} is not a FITS file.')
                 message.exec()
                 self.exposures = None
                 f.close()
@@ -274,7 +274,7 @@ class Inspector:
                 sensitivities = json.load(f)
                 if not isinstance(sensitivities, dict):
                     raise TypeError('')
-                    message = QMessageBox(self, 'Error',
+                    message = QMessageBox(0, 'Error',
                                           'The JSON file specifying the sensitivity curves must contain a dictionary.')
                     message.exec()
                     return
@@ -322,10 +322,6 @@ class Inspector:
                 self._detector_info_window.show()
             elif isinstance(tab, ObjectTab):
                 tab.show_info()
-                m = QMessageBox(0, 'Not Implemented',
-                                "This feature had not been implemented yet. An info window will display here",
-                                QMessageBox.NoButton)
-                m.exec()
 
     def new_view_tab(self, dither=None, detector=None):
         new_view_tab = ViewTab(inspector)

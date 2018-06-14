@@ -6,6 +6,8 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QGridLayout, QMdiArea, QActio
                              QCheckBox, QMessageBox)
 
 from plot_window import PlotWindow
+from info_window import ObjectInfoWindow
+from view_tab import ViewTab
 from detector_selector import MultiDitherDetectorSelector
 import utils
 
@@ -100,6 +102,7 @@ class PlotSelector(QWidget):
 
         detector_button = QPushButton('Show Detectors', self)
         detector_button.setMaximumWidth(128)
+        detector_button.pressed.connect(self.object_tab.open_detectors)
         detector_button.setDisabled(True)
         plot_button = QPushButton('Make Plot(s)', self)
         plot_button.setMaximumWidth(128)
@@ -358,6 +361,8 @@ class ObjectTab(QWidget):
 
         self._plot_descriptors = set()
 
+        self._info_window = None
+
     @property
     def object_id(self):
         return self._object_id
@@ -386,7 +391,15 @@ class ObjectTab(QWidget):
                 window.show()
 
     def show_info(self):
-        print('this is where I would show info')
+        if self._inspector.location_tables is not None:
+            info = self._inspector.location_tables.get_info(self._object_id)
+            info_window = ObjectInfoWindow(info, self._inspector)
+            info_window.show()
+            self._info_window = info_window
+        else:
+            m = QMessageBox(0, 'Missing Data',
+                            'Location tables containing the requested information must be loaded before showing info.')
+            m.exec()
 
     def determine_relevant_detectors(self, object_id):
         """
@@ -415,3 +428,33 @@ class ObjectTab(QWidget):
 
     def handle_closed_subwindow(self, descriptor):
         self._plot_descriptors.remove(descriptor)
+
+    def open_detectors(self):
+
+        selected_detectors = self.detector_selector.selected_detectors()
+
+        inspector = self._inspector
+
+        # make a list of all open detectors (detectors currently being viewed in tabs)
+
+        open_detectors = []
+
+        for tab_index in range(inspector.tabs.count()):
+            tab = inspector.tabs.widget(tab_index)
+            if isinstance(tab, ViewTab):
+                open_detectors.append((tab.current_dither, tab.current_detector))
+
+        # open new tabs, where necessary
+
+        for dither in selected_detectors:
+            if selected_detectors[dither] is not None:
+                for detector in selected_detectors[dither]:
+                    if (dither, detector) not in open_detectors:
+                        inspector.new_view_tab(dither, detector)
+
+            # pin the object in all tabs:
+
+            for tab_index in range(inspector.tabs.count()):
+                tab = inspector.tabs.widget(tab_index)
+                if isinstance(tab, ViewTab):
+                    tab.select_spectrum_by_id(self._object_id)
