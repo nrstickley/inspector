@@ -10,6 +10,10 @@ from detector_selector import MultiDitherDetectorSelector
 import utils
 
 
+J_WAV = 13697.01  # in angstroms
+H_WAV = 17761.52  # in angstroms
+
+
 class PlotSelector(QWidget):
     X_PIX = 0
     X_WAV = 1
@@ -203,7 +207,9 @@ class SpecPlot:
 
         sensitivity_wav, sensitivity_value = self._inspector.sensitivities[dither]
 
-        return utils.interp_multiply(wavelengths, spec_1d / denom, sensitivity_wav, 1.0 / sensitivity_value)
+        inverse_sensitivity = utils.div0(1.0, sensitivity_value)
+
+        return utils.interp_multiply(wavelengths, spec_1d / denom, sensitivity_wav, inverse_sensitivity)
 
     def _plot(self, dither, detector):
         if self._data_series == 0:
@@ -232,6 +238,8 @@ class SpecPlot:
         i_max = max(short_wav_end, long_wav_end)
 
         x_values = wavelengths[i_min: i_max] if plot_wavelength else pixels[i_min: i_max]
+
+        # determine and set the limits of the x-axis
 
         if plot_wavelength and plot_flux:
             plot.axis.set_xlim((min_wav, max_wav))
@@ -279,6 +287,17 @@ class SpecPlot:
 
                 plot.axis.plot(x_values, y_values[i_min: i_max], label='model spectrum', color='r', linewidth=0.9,
                                alpha=0.9)
+
+        # plot the J and H band fluxes if the plot shows flux vs wavelength
+
+        if plot_wavelength and plot_flux:
+            info = self._inspector.location_tables.get_info(self._object_id)
+            j_microjansky = utils.mag_to_fnu(info.jmag, zero_point=22)
+            h_microjansky = utils.mag_to_fnu(info.hmag, zero_point=22)
+            j_fnu = utils.mjy_to_angstrom(j_microjansky, J_WAV)
+            h_fnu = utils.mjy_to_angstrom(h_microjansky, H_WAV)
+            plot.axis.scatter(J_WAV, j_fnu, color='r', label='J and H band fluxes')
+            plot.axis.scatter(H_WAV, h_fnu, color='r')
 
         x_label = r'Wavelength $\rm (\AA)$' if self._x_type == PlotSelector.X_WAV else 'Pixel'
         y_label = r'Flux ($\rm erg/s/cm^2/\AA$)' if self._y_type == PlotSelector.Y_FLUX else 'Electrons / second'
