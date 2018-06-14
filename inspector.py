@@ -3,9 +3,10 @@
 """
 General plan:
 
- * show zeroth order contaminant boxes.
- * add the ability to to compute wavelengths
+ * prevent the same plot from being generated more than once.
  * add the ability to to convert to physical flux values
+ * show object info window when viewing object tab.
+ * show zeroth order contaminant boxes.
  * in blank tabs, show a note about using the file menu or Ctrl+E to load exposures.
 
  """

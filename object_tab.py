@@ -98,6 +98,7 @@ class PlotSelector(QWidget):
         plot_button.pressed.connect(self.object_tab.make_plots)
         plot_button.setDisabled(True)
 
+        self.detector_button = detector_button
         self.plot_button = plot_button
 
         buttons = QVBoxLayout()
@@ -185,7 +186,6 @@ class SpecPlot:
         return spec_1d
 
     def _plot(self, dither, detector):
-        print(f'making plot for {dither}.{detector}')
         if self._data_series == 0:
             return
 
@@ -213,7 +213,7 @@ class SpecPlot:
             else:
                 y_values = np.sum(spec.science + spec.contamination, axis=dispersion_axis)
 
-            plot.axis.plot(x_values, y_values, label='original spectrum', color='k', linewidth=0.5, alpha=0.8)
+            plot.axis.plot(x_values, y_values, label='original spectrum', color='k', linewidth=0.5, alpha=0.7)
 
         if self._data_series & PlotSelector.S_CONTAM == PlotSelector.S_CONTAM:
             if plot_flux:
@@ -221,7 +221,7 @@ class SpecPlot:
             else:
                 y_values = spec.contamination.sum(dispersion_axis)
 
-            plot.axis.plot(x_values, y_values, label='contamination', color='g', linewidth=0.5, alpha=0.8)
+            plot.axis.plot(x_values, y_values, label='contamination', color='g', linewidth=0.75, alpha=0.8)
 
         if self._data_series & PlotSelector.S_DECON == PlotSelector.S_DECON:
             if plot_flux:
@@ -241,13 +241,12 @@ class SpecPlot:
 
                 plot.axis.plot(x_values, y_values, label='model spectrum', color='r', linewidth=0.9, alpha=0.9)
 
-        x_label = 'Wavelength ($AA$)' if self._x_type == PlotSelector.X_WAV else 'Pixel'
-        y_label = 'Flux ($erg\,s^{-1}\,cm^{-2}\,\AA$)' if self._y_type == PlotSelector.Y_FLUX else 'Electrons / second'
+        x_label = r'Wavelength $\rm (\AA)$' if self._x_type == PlotSelector.X_WAV else 'Pixel'
+        y_label = r'Flux ($\rm erg/s/cm^2/\AA$)' if self._y_type == PlotSelector.Y_FLUX else 'Electrons / second'
 
         plot.axis.set_xlabel(x_label)
         plot.axis.set_ylabel(y_label)
-
-        print('made plot')
+        plot.axis.legend()
 
         return plot
 
@@ -339,5 +338,7 @@ class ObjectTab(QWidget):
 
         if all(item is None for item in selected):
             self.plot_selector.plot_button.setDisabled(True)
+            self.plot_selector.detector_button.setDisabled(True)
         else:
+            self.plot_selector.detector_button.setEnabled(True)
             self.plot_selector.plot_button.setEnabled(True)
