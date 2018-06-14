@@ -3,8 +3,6 @@
 """
 General plan:
 
- * enable the 'Show Detectors' button to work as expected.
- * show object info window when viewing object tab.
  * show zeroth order contaminant boxes.
  * in blank tabs, show a note about using the file menu or Ctrl+E to load exposures.
 
@@ -160,8 +158,9 @@ class Inspector:
             filename, _ = QFileDialog.getOpenFileName(self.main, caption='Open Decontaminated Spectra', filter='*.json')
         else:
             filename = self._session['spectra']
-            if filename == '':
-                return
+
+        if filename == '':
+            return
 
         if os.path.isfile(filename):
             print(f"Loading {filename}.")
@@ -179,9 +178,9 @@ class Inspector:
                 for view_tab in self.view_tab:
                     view_tab.selection_area.searchbox.returnPressed.connect(view_tab.select_spectrum)
 
-        if self.collection is None:
+        if self.collection is None and filename != '':
             m = QMessageBox(0, 'Error', 'Encountered error while loading the spectra. Make sure the correct paths '
-                                           'were specified.')
+                            'were specified.')
             m.exec()
             return
 
@@ -239,7 +238,7 @@ class Inspector:
 
     def load_location_tables(self):
         if not self._loading_session:
-            filename, _ = QFileDialog.getOpenFileName(self.main, caption='Load Decontaminated Spectra', filter='*.json')
+            filename, _ = QFileDialog.getOpenFileName(self.main, caption='Load Location Tables', filter='*.json')
         else:
             filename = self._session['location_tables']
             if filename == '':
@@ -368,6 +367,9 @@ class Inspector:
     def save_session(self):
         filename, _ = QFileDialog.getSaveFileName(self.main, caption='Save Session', filter='*.sir')
 
+        if filename == '':
+            return
+
         fields = ['exposures',
                   'spectra',
                   'location_tables',
@@ -381,14 +383,12 @@ class Inspector:
 
         if (len(filename) > 4 and filename[-4:] != '.sir') or 0 < len(filename) < 4:
             filename += '.sir'
-        elif len(filename) == 0:
-            filename -= 'untitled_session.sir'
 
         with open(filename, 'w') as f:
             json.dump(self._session, f)
 
     def load_session(self):
-        filename, _ = QFileDialog.getOpenFileName(self.main, caption='Save Session', filter='*.sir')
+        filename, _ = QFileDialog.getOpenFileName(self.main, caption='Load Session', filter='*.sir')
 
         if filename == '':
             return
