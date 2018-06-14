@@ -59,7 +59,6 @@ class PlotWindow(QWidget):
         self._descriptor = descriptor
 
     def keyPressEvent(self, event):
-
         if event.key() == Qt.Key_Q or event.key() == Qt.Key_Escape:
             self.close()
 

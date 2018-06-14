@@ -3,10 +3,11 @@ import numpy as np
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QGridLayout, QMdiArea, QAction, QGroupBox, QPushButton, QRadioButton,
-                             QCheckBox)
+                             QCheckBox, QMessageBox)
 
 from plot_window import PlotWindow
 from detector_selector import MultiDitherDetectorSelector
+import utils
 
 
 class PlotSelector(QWidget):
@@ -63,7 +64,11 @@ class PlotSelector(QWidget):
         y_axis_type.setMinimumWidth(200)
         data_number_radio = QRadioButton('Image Units', y_axis_type)
         calibrated_flux_radio = QRadioButton('Calibrated Flux', y_axis_type)
-        calibrated_flux_radio.setChecked(True)
+        if self.object_tab.inspector.sensitivities[self.object_tab.dither] is None:
+            calibrated_flux_radio.setDisabled(True)
+            data_number_radio.setChecked(True)
+        else:
+            calibrated_flux_radio.setChecked(True)
         y_axis_type.setLayout(QVBoxLayout())
         y_axis_type.layout().addWidget(data_number_radio)
         y_axis_type.layout().addWidget(calibrated_flux_radio)
@@ -182,8 +187,23 @@ class SpecPlot:
                     self._windows.append(plot)
 
     def _calibrate_spectrum(self, dither, spec_1d, wavelengths):
-        # needs to know dither, spec, wavelengths
-        return spec_1d
+        """
+        Applies the calibration correction to convert `spec_1d` from detector units to erg/s/cm^2/Angstrom
+        """
+        if self._inspector.sensitivities[dither] is None:
+            m = QMessageBox(self._inspector, 'You need to load the grism sensitivity curves first.')
+            m.exec()
+            return
+
+        exposure_time = self._inspector.exposures[dither][1].header['EXPTIME']
+
+        dl = np.fabs(np.diff(wavelengths))
+
+        denom = np.append(dl, dl[0]) * exposure_time
+
+        sensitivity_wav, sensitivity_value = self._inspector.sensitivities[dither]
+
+        return utils.interp_multiply(wavelengths, spec_1d / denom, sensitivity_wav, 1.0 / sensitivity_value)
 
     def _plot(self, dither, detector):
         if self._data_series == 0:
@@ -204,7 +224,23 @@ class SpecPlot:
             pixels = spec.y_offset + np.arange(0, spec.science.shape[0])
             wavelengths = spec.solution.compute_wavelength(pixels)
 
-        x_values = wavelengths if plot_wavelength else pixels
+        min_wav, max_wav = 12400, 18600
+
+        short_wav_end = np.argmin(np.fabs(wavelengths - min_wav))
+        long_wav_end = np.argmin(np.fabs(wavelengths - max_wav))
+        i_min = min(short_wav_end, long_wav_end)
+        i_max = max(short_wav_end, long_wav_end)
+
+        x_values = wavelengths[i_min: i_max] if plot_wavelength else pixels[i_min: i_max]
+
+        if plot_wavelength and plot_flux:
+            plot.axis.set_xlim((min_wav, max_wav))
+        elif plot_flux and not plot_wavelength:
+            short_wav_end = np.argmin(np.fabs(wavelengths - min_wav))
+            long_wav_end = np.argmin(np.fabs(wavelengths - max_wav))
+            x_min = min(pixels[short_wav_end], pixels[long_wav_end])
+            x_max = max(pixels[short_wav_end], pixels[long_wav_end])
+            plot.axis.set_xlim((x_min, x_max))
 
         if self._data_series & PlotSelector.S_ORIG == PlotSelector.S_ORIG:
             if plot_flux:
@@ -213,7 +249,8 @@ class SpecPlot:
             else:
                 y_values = np.sum(spec.science + spec.contamination, axis=dispersion_axis)
 
-            plot.axis.plot(x_values, y_values, label='original spectrum', color='k', linewidth=0.5, alpha=0.7)
+            plot.axis.plot(x_values, y_values[i_min: i_max], label='original spectrum', color='k', linewidth=0.5,
+                           alpha=0.7)
 
         if self._data_series & PlotSelector.S_CONTAM == PlotSelector.S_CONTAM:
             if plot_flux:
@@ -221,7 +258,8 @@ class SpecPlot:
             else:
                 y_values = spec.contamination.sum(dispersion_axis)
 
-            plot.axis.plot(x_values, y_values, label='contamination', color='g', linewidth=0.75, alpha=0.8)
+            plot.axis.plot(x_values, y_values[i_min: i_max], label='contamination', color='g', linewidth=0.75,
+                           alpha=0.8)
 
         if self._data_series & PlotSelector.S_DECON == PlotSelector.S_DECON:
             if plot_flux:
@@ -229,7 +267,7 @@ class SpecPlot:
             else:
                 y_values = spec.science.sum(dispersion_axis)
 
-            plot.axis.plot(x_values, y_values, label='decontaminated spectrum', color='b', linewidth=0.9)
+            plot.axis.plot(x_values, y_values[i_min: i_max], label='decontaminated spectrum', color='b', linewidth=0.9)
 
         if self._data_series & PlotSelector.S_MODEL == PlotSelector.S_MODEL:
             model = self._inspector.collection.get_model(dither, detector, self._object_id, order=1)
@@ -239,7 +277,8 @@ class SpecPlot:
                 else:
                     y_values = model.pixels.sum(dispersion_axis)
 
-                plot.axis.plot(x_values, y_values, label='model spectrum', color='r', linewidth=0.9, alpha=0.9)
+                plot.axis.plot(x_values, y_values[i_min: i_max], label='model spectrum', color='r', linewidth=0.9,
+                               alpha=0.9)
 
         x_label = r'Wavelength $\rm (\AA)$' if self._x_type == PlotSelector.X_WAV else 'Pixel'
         y_label = r'Flux ($\rm erg/s/cm^2/\AA$)' if self._y_type == PlotSelector.Y_FLUX else 'Electrons / second'
@@ -312,6 +351,10 @@ class ObjectTab(QWidget):
     def detector(self):
         return self._detector
 
+    @property
+    def inspector(self):
+        return self._inspector
+
     def make_plots(self):
         self._spec_plots = SpecPlot(self._inspector, self.plot_selector, self.detector_selector)
         self._spec_plots.make_plots(self._object_id)
@@ -352,5 +395,4 @@ class ObjectTab(QWidget):
             self.plot_selector.plot_button.setEnabled(True)
 
     def handle_closed_subwindow(self, descriptor):
-        print(descriptor)
         self._plot_descriptors.remove(descriptor)

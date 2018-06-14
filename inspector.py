@@ -4,7 +4,6 @@
 General plan:
 
  * enable the 'Show Detectors' button to work as expected.
- * add the ability to to convert to physical flux values
  * show object info window when viewing object tab.
  * show zeroth order contaminant boxes.
  * in blank tabs, show a note about using the file menu or Ctrl+E to load exposures.
