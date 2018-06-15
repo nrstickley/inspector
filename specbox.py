@@ -4,7 +4,7 @@ mpl.use('Qt5Agg')
 import matplotlib.pyplot as plt
 
 from PyQt5.QtCore import Qt, QRectF
-from PyQt5.QtGui import QColor, QPen
+from PyQt5.QtGui import QColor, QPen, QTransform
 from PyQt5.QtWidgets import (QGraphicsRectItem, QMenu, QAction, QGraphicsTextItem, QGraphicsItem,
                              QGraphicsSceneMouseEvent, QApplication, QMessageBox)
 
@@ -12,6 +12,8 @@ from spec_table import SpecTable
 from plot_window import PlotWindow
 from info_window import ObjectInfoWindow
 
+
+flip_vertical = QTransform(1.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0, 1.0)
 
 flag = {"ZERO": np.uint32(2**18),     # zeroth-order: bit 18
         "MISSING": np.uint32(2**19),  # missing data: bit 19
@@ -111,10 +113,12 @@ class Rect(QGraphicsRectItem):
     def pin(self, label_pos=None):
         if label_pos is not None:
             self.label = QGraphicsTextItem(f"{self._spec.id}", parent=self)
+            self.label.setTransform(flip_vertical, True)
             self.label.setPos(label_pos)
             self.label.setDefaultTextColor(QColor('red'))
         else:
             self.label = QGraphicsTextItem(f"{self._spec.id}")
+            self.label.setTransform(flip_vertical, True)
             self.label.setDefaultTextColor(QColor('red'))
             self.scene().addItem(self.label)
             self.label.setPos(self.scenePos())
@@ -234,7 +238,7 @@ class Rect(QGraphicsRectItem):
         plot = PlotWindow(title)
 
         plt.sca(plot.axis)
-        plt.imshow(data)
+        plt.imshow(data, origin='lower')
         plt.subplots_adjust(top=0.975, bottom=0.025, left=0.025, right=0.975)
         plt.draw()
         plot.setWindowFlag(Qt.WindowStaysOnTopHint, False)
@@ -258,23 +262,23 @@ class Rect(QGraphicsRectItem):
         plot = PlotWindow(title, shape=subplot_grid_shape)
 
         plt.sca(plot.axis[0])
-        plt.imshow(self.spec.contamination + self.spec.science)
+        plt.imshow(self.spec.contamination + self.spec.science, origin='lower')
         plt.title('Original')
         plt.draw()
 
         plt.sca(plot.axis[1])
-        plt.imshow(self.spec.contamination)
+        plt.imshow(self.spec.contamination, origin='lower')
         plt.title('Contamination')
         plt.draw()
 
         plt.sca(plot.axis[2])
-        plt.imshow(self.spec.science)
+        plt.imshow(self.spec.science, origin='lower')
         plt.title('Decontaminated')
         plt.draw()
 
         plt.sca(plot.axis[3])
         if self.model is not None:
-            plt.imshow(self.model)
+            plt.imshow(self.model, origin='lower')
             plt.title('Model')
         else:
             plt.title('N/A')
@@ -282,20 +286,20 @@ class Rect(QGraphicsRectItem):
 
         plt.sca(plot.axis[4])
         if self.model is not None:
-            plt.imshow(self.spec.science - self.model)
+            plt.imshow(self.spec.science - self.model, origin='lower')
             plt.title('Residual')
         else:
             plt.title('N/A')
         plt.draw()
 
         plt.sca(plot.axis[5])
-        plt.imshow(self.spec.variance)
+        plt.imshow(self.spec.variance, origin='lower')
         plt.title('Variance')
         plt.draw()
 
         plt.sca(plot.axis[6])
         data = (flag['ZERO'] & self.spec.mask) == flag['ZERO']
-        plt.imshow(data)
+        plt.imshow(data, origin='lower')
         plt.title('Zeroth Orders')
         plt.draw()
 
@@ -331,12 +335,12 @@ class Rect(QGraphicsRectItem):
         self._contam_table.show()
 
     def open_analysis_tab(self):
-        view_tab = self.view.main
+        view_tab = self.view.view_tab
         inspector = view_tab.inspector
         inspector.new_analysis_tab(view_tab.current_dither, view_tab.current_detector, self.spec.id)
 
     def open_all_spectra(self):
-        view_tab = self.view.main
+        view_tab = self.view.view_tab
         inspector = view_tab.inspector
 
         # make a list of all open detectors (detectors currently being viewed in tabs)
@@ -364,7 +368,7 @@ class Rect(QGraphicsRectItem):
 
     def show_info(self):
 
-        view_tab = self.view.main
+        view_tab = self.view.view_tab
         inspector = view_tab.inspector
 
         if inspector.location_tables is not None:

@@ -1,9 +1,12 @@
 
 from PyQt5.QtCore import Qt, QRectF, pyqtSignal
-from PyQt5.QtGui import QColor, QBrush, QPen, QFont
+from PyQt5.QtGui import QColor, QBrush, QPen, QFont, QTransform
 from PyQt5.QtWidgets import (QWidget, QGraphicsView, QGraphicsWidget, QGraphicsScene, QGraphicsGridLayout,
                              QGraphicsSimpleTextItem, QGraphicsRectItem, QGraphicsDropShadowEffect, QVBoxLayout,
                              QGraphicsLayoutItem, QLabel, QGridLayout)
+
+
+flip_vertical = QTransform(1.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0, 1.0)
 
 
 def box_id(row, column):
@@ -62,6 +65,8 @@ class DetectorBox(QGraphicsRectItem):
 
         self._label.setBrush(QBrush(QColor('white')))
 
+        #self._label.setTransform(flip_vertical, True)
+
         self._detector_selector = None
 
     @property
@@ -107,6 +112,7 @@ class DetectorBox(QGraphicsRectItem):
             self._detector_selector.selection_changed()
 
     def place_label(self, rect):
+        # FIXMe: placement should be done differently, so that flipping the text leaves it in the same place.
         x_center = 0.5 * (rect.left() + rect.right()) - 6 * len(self._label.text())
         y_center = 0.5 * (rect.bottom() + rect.top()) - 11
         self._label.setPos(x_center, y_center)
@@ -166,6 +172,8 @@ class MultiDetectorSelector(QWidget):
         view.setStyleSheet("border: 0px; margin: 0px; padding: 0px;")
 
         view.setScene(scene)
+
+        view.setTransform(flip_vertical, True)
 
         layout = QVBoxLayout()
 

@@ -72,7 +72,7 @@ class Inspector:
         self._detector_info_window = DetectorInfoWindow(self)
 
     def init_menu(self):
-        """Creates the main menu."""
+        """Creates the view_tab menu."""
         menu = self.main.menuBar()
 
         self.init_file_menu(menu)
@@ -412,7 +412,7 @@ class Inspector:
 
     @staticmethod
     def init_main():
-        """Creates the main application window."""
+        """Creates the view_tab application window."""
         main = QMainWindow()
         main.setWindowTitle('Decontamination InSpector')
         main.resize(1200, 950)

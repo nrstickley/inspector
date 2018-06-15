@@ -26,15 +26,15 @@ class View(QGraphicsView):
 
 
 app = QApplication([])
-main = QMainWindow()
-main.setWindowTitle('my app')
-main.resize(1000, 1000)
-main.show()
-menu = main.menuBar()
+view_tab = QMainWindow()
+view_tab.setWindowTitle('my app')
+view_tab.resize(1000, 1000)
+view_tab.show()
+menu = view_tab.menuBar()
 file_menu = menu.addMenu('File')
 load = file_menu.addAction('load...')
 
-toolbar = main.addToolBar('tools')
+toolbar = view_tab.addToolBar('tools')
 
 toolbar.addAction('help')
 
@@ -56,7 +56,7 @@ tabs.addTab(single, "Single view")
 
 tabs.addTab(multi, "Multi view")
 
-main.setCentralWidget(tabs)
+view_tab.setCentralWidget(tabs)
 
 gview = View('single')
 gview0 = View('upper-left')
@@ -135,7 +135,7 @@ class Rect(QGraphicsRectItem):
     def hoverLeaveEvent(self, event):
         #print("The hovering stopped.")
         self.setPen(green_pen)
- 
+
 rect = Rect(25, 24, 100, 10)
 
 bigrect = Rect(10, 10, 150, 30)

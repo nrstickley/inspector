@@ -74,7 +74,7 @@ class SpecTable(QTableWidget):
             id_item = self.item(row, 0)
             order_item = self.item(row, 1)
             if not id_item.isSelected() and not order_item.isSelected():
-                self.view.main.unselect_spectrum_by_id(id_item.text())
+                self.view.view_tab.unselect_spectrum_by_id(id_item.text())
 
         # pin the selected spectra
         for item in self.selectedItems():
@@ -82,7 +82,7 @@ class SpecTable(QTableWidget):
             object_id = self.item(row, 0).text()
             order = int(self.item(row, 1).text())
             if order == 1:
-                self.view.main.select_spectrum_by_id(object_id)
+                self.view.view_tab.select_spectrum_by_id(object_id)
 
     def keyPressEvent(self, event):
 
