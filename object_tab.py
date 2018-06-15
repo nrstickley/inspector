@@ -1,8 +1,8 @@
 import numpy as np
 
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QGridLayout, QMdiArea, QAction, QGroupBox, QPushButton, QRadioButton,
+from PyQt5.QtGui import QIcon, QBrush, QColor
+from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QGridLayout, QMdiArea, QGroupBox, QPushButton, QRadioButton,
                              QCheckBox, QMessageBox)
 
 from plot_window import PlotWindow
@@ -335,6 +335,7 @@ class ObjectTab(QWidget):
 
         self.mdi = QMdiArea(self)
         self.mdi.setContentsMargins(0, 0, 0, 0)
+        self.mdi.setBackground(QBrush(QColor('#56595e')))
 
         h_layout = QGridLayout()
         h_layout.setSpacing(0)

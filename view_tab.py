@@ -1,6 +1,7 @@
 
 
 from PyQt5.QtCore import Qt, QPointF
+from PyQt5.QtGui import QBrush, QColor, QImage, QPixmap
 from PyQt5.QtWidgets import (QGraphicsScene, QWidget, QComboBox, QHBoxLayout, QLabel,
                              QLineEdit, QVBoxLayout, QSpacerItem, QSizePolicy)
 
@@ -91,6 +92,14 @@ class ViewTab(QWidget):
         self.view = View(self)
 
         self.scene = QGraphicsScene()
+
+        self._background = QBrush(QColor('#56595e'))
+
+        self._blank_image = QPixmap(QImage('./load-exposure-message.svg'))
+
+        self.scene.setBackgroundBrush(self._background)
+
+        self._lank_pixmap = self.scene.addPixmap(self._blank_image)
 
         self.view.setScene(self.scene)
 
