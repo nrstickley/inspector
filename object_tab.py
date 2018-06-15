@@ -394,6 +394,8 @@ class ObjectTab(QWidget):
         if self._inspector.location_tables is not None:
             info = self._inspector.location_tables.get_info(self._object_id)
             info_window = ObjectInfoWindow(info, self._inspector)
+            self.mdi.addSubWindow(info_window)
+            info_window.activateWindow()
             info_window.show()
             self._info_window = info_window
         else:
