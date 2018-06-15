@@ -2,7 +2,7 @@
 from PyQt5.QtCore import Qt, QRectF, pyqtSignal
 from PyQt5.QtGui import QColor, QBrush, QPen, QFont, QTransform
 from PyQt5.QtWidgets import (QWidget, QGraphicsView, QGraphicsWidget, QGraphicsScene, QGraphicsGridLayout,
-                             QGraphicsSimpleTextItem, QGraphicsRectItem, QGraphicsDropShadowEffect, QVBoxLayout,
+                             QGraphicsTextItem, QGraphicsRectItem, QGraphicsDropShadowEffect, QVBoxLayout,
                              QGraphicsLayoutItem, QLabel, QGridLayout)
 
 
@@ -59,11 +59,11 @@ class DetectorBox(QGraphicsRectItem):
             self.setBrush(self.disabled_brush)
 
         # states: enabled, disabled, hovered, selected
-        self._label = QGraphicsSimpleTextItem(str(self.detector_id), self)
+        self._label = QGraphicsTextItem(str(self.detector_id), self)
 
         self._label.setFont(QFont('Arial', 14))
 
-        self._label.setBrush(QBrush(QColor('white')))
+        self._label.setDefaultTextColor(QColor('white'))
 
         #self._label.setTransform(flip_vertical, True)
 
@@ -113,7 +113,7 @@ class DetectorBox(QGraphicsRectItem):
 
     def place_label(self, rect):
         # FIXMe: placement should be done differently, so that flipping the text leaves it in the same place.
-        x_center = 0.5 * (rect.left() + rect.right()) - 6 * len(self._label.text())
+        x_center = 0.5 * (rect.left() + rect.right()) - 0.5 * self._label.textWidth()
         y_center = 0.5 * (rect.bottom() + rect.top()) - 11
         self._label.setPos(x_center, y_center)
 
