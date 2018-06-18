@@ -123,7 +123,7 @@ green_pen = QPen(QColor('green'))
 
 rect3 = scene3.addRect(50, 80, 120, 14, green_pen)
 
-class Rect(QGraphicsRectItem):
+class SpecBox(QGraphicsRectItem):
     def __init__(self, *args):
         rect = QRectF(*args)
         super().__init__(rect)
@@ -136,9 +136,9 @@ class Rect(QGraphicsRectItem):
         #print("The hovering stopped.")
         self.setPen(green_pen)
 
-rect = Rect(25, 24, 100, 10)
+rect = SpecBox(25, 24, 100, 10)
 
-bigrect = Rect(10, 10, 150, 30)
+bigrect = SpecBox(10, 10, 150, 30)
 
 scene0.addItem(rect)
 scene0.addItem(bigrect)

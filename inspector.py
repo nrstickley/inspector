@@ -1,10 +1,9 @@
 #! /usr/bin/env python3.6
 
 """
-General plan:
+TODO:
 
  * show zeroth order contaminant boxes.
- * in blank tabs, show a note about using the file menu or Ctrl+E to load exposures.
 
  """
 
@@ -22,11 +21,13 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QTabWidget, QFileDialog,
 from view_tab import ViewTab
 from object_tab import ObjectTab
 from info_window import DetectorInfoWindow
-
 from reader import DecontaminatedSpectraCollection, LocationTable, NISP_DETECTOR_MAP
 
 
 class Inspector:
+    """
+    The inSpector application class, which is the core (main) component of the inSpector.
+    """
     def __init__(self, app):
 
         self.app = app
@@ -59,11 +60,11 @@ class Inspector:
 
         self.tabs.tabBarDoubleClicked.connect(self.new_view_tab)
 
-        self.tabs.currentChanged.connect(self._change_detector)
+        self.tabs.currentChanged.connect(self.change_detector)
 
         self.tabs.setMovable(True)
 
-        self.menu = self.init_menu()
+        self.menu = self._init_menu()
 
         self._session = {}
 
@@ -71,17 +72,17 @@ class Inspector:
 
         self._detector_info_window = DetectorInfoWindow(self)
 
-    def init_menu(self):
+    def _init_menu(self):
         """Creates the view_tab menu."""
         menu = self.main.menuBar()
 
-        self.init_file_menu(menu)
+        self._init_file_menu(menu)
 
-        self.init_windows_menu(menu)
+        self._init_windows_menu(menu)
 
         return menu
 
-    def init_file_menu(self, main_menu):
+    def _init_file_menu(self, main_menu):
         file_menu = main_menu.addMenu('File')
 
         load_nisp = QAction('Load Exposures', main_menu)
@@ -138,7 +139,7 @@ class Inspector:
 
         return file_menu
 
-    def init_windows_menu(self, main_menu):
+    def _init_windows_menu(self, main_menu):
         windows_menu = main_menu.addMenu('Windows')
 
         show_info = QAction('Show Info Window', main_menu)
@@ -154,6 +155,9 @@ class Inspector:
         return self._detector_info_window
 
     def load_spectra(self):
+        """
+        Loads the decontaminated spectra collections, specified in a list within a JSON file.
+        """
         if not self._loading_session:
             filename, _ = QFileDialog.getOpenFileName(self.main, caption='Open Decontaminated Spectra', filter='*.json')
         else:
@@ -184,7 +188,7 @@ class Inspector:
             m.exec()
             return
 
-        self.organize_spectra_by_object_id()
+        self._organize_spectra_by_object_id()
 
         self._session['spectra'] = filename
 
@@ -237,6 +241,9 @@ class Inspector:
         self._session['exposures'] = nisp_exposures_json_file
 
     def load_location_tables(self):
+        """
+        Loads the location tables.
+        """
         if not self._loading_session:
             filename, _ = QFileDialog.getOpenFileName(self.main, caption='Load Location Tables', filter='*.json')
         else:
@@ -259,6 +266,9 @@ class Inspector:
             self._session['location_tables'] = filename
 
     def load_sensitivities(self):
+        """
+        Loads the sensitivity curves, specified in a dictionary within a JSON file.
+        """
         if not self._loading_session:
             filename, _ = QFileDialog.getOpenFileName(self.main, caption='Load grism sensitivities', filter='*.json')
         else:
@@ -289,7 +299,7 @@ class Inspector:
 
             self._session['grism_sensitivities'] = filename
 
-    def organize_spectra_by_object_id(self):
+    def _organize_spectra_by_object_id(self):
         """
         Constructs a map in the format {object_id: {dither: {detector: spectrum}} from self.collection
         """
@@ -307,12 +317,24 @@ class Inspector:
                     self.spectra[object_id][dither][detector] = spec
 
     def get_object_dithers(self, object_id):
+        """
+        Returns a list of dithers in which the object with the specified object ID appears.
+        """
         return list(self.spectra[object_id].keys())
 
     def get_object_detectors(self, dither, object_id):
+        """
+        Returns a list of detectors within the specified dither in which the object with the specified object ID
+        appears.
+        """
         return list(self.spectra[object_id][dither].keys())
 
     def show_info(self):
+        """
+        Shows an info window specific to the current tab. If the tab is a View tab, information about the detector that
+        is currently being viewed is displayed. If the current tab is an Object tab, then the information about the
+        object is displayed.
+        """
         if self.exposures is not None:
             # determine which type of tab is open. If it is a detector tab, show the detector info.
             # if it is an Object tab, show object info
@@ -323,6 +345,9 @@ class Inspector:
                 tab.show_info()
 
     def new_view_tab(self, dither=None, detector=None):
+        """
+        Creates a new detector View tab.
+        """
         new_view_tab = ViewTab(inspector)
         self.view_tab.append(new_view_tab)
         index = self.tabs.addTab(new_view_tab, f'view {len(self.view_tab) - 1}')
@@ -337,18 +362,27 @@ class Inspector:
             new_view_tab.change_detector(detector - 1)
             self.rename_tab(new_view_tab)
 
-    def new_analysis_tab(self, dither, detector, object_id):
+    def new_object_tab(self, dither, detector, object_id):
+        """
+        Creates a new Object tab.
+        """
         tab = ObjectTab(self, dither, detector, object_id)
         self.analysis_tab.append(tab)
         index = self.tabs.addTab(tab, f'Object {object_id}')
         self.tabs.setCurrentIndex(index)
 
     def rename_tab(self, view_tab):
+        """
+        Renames the view_tab (changes the text in the tab itself).
+        """
         # find the index of the view_tab and then use that index to change the name of the tab
         tab_index = self.tabs.indexOf(view_tab)
         self.tabs.setTabText(tab_index, f'dither-{view_tab.current_dither} det-{view_tab.current_detector}')
 
     def close_tab(self, tab_index):
+        """
+        Closes the tab with the specified index.
+        """
         item = self.tabs.widget(tab_index)
         if item in self.view_tab:
             self.view_tab.remove(item)
@@ -357,14 +391,15 @@ class Inspector:
         if self.tabs.count() == 0:
             self.exit()
 
-    def _change_detector(self, tab_index):
+    def change_detector(self, tab_index):
         item = self.tabs.widget(tab_index)
         if item in self.view_tab:
-            item.current_detector
-            item.current_dither
             self.detector_info_window.update_detector(item.current_dither, item.current_detector)
 
     def save_session(self):
+        """
+        Saves the session as a JSON file, containing the names of the files that are currently loaded.
+        """
         filename, _ = QFileDialog.getSaveFileName(self.main, caption='Save Session', filter='*.sir')
 
         if filename == '':
@@ -388,6 +423,9 @@ class Inspector:
             json.dump(self._session, f)
 
     def load_session(self):
+        """
+        Loads a previously-saved session.
+        """
         filename, _ = QFileDialog.getOpenFileName(self.main, caption='Load Session', filter='*.sir')
 
         if filename == '':

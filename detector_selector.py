@@ -28,6 +28,9 @@ class DetectorBoxLayout(QGraphicsLayoutItem):
 
 
 class DetectorBox(QGraphicsRectItem):
+    """
+    Represents a single detector box in the MultiDetectorSelector widget.
+    """
     length = 32
     disabled_brush = QBrush(QColor(210, 210, 210, 200))
     enabled_brush = QBrush(QColor(120, 123, 135, 255))
@@ -116,10 +119,13 @@ class DetectorBox(QGraphicsRectItem):
         x_center = 0.5 * (rect.left() + rect.right()) - 0.5 * self._label.boundingRect().width()
         y_center = 0.5 * (rect.bottom() + rect.top()) - 0.5 * self._label.boundingRect().height() + self.length
         self._label.setPos(x_center, y_center)
-        print('text width:', self._label.boundingRect())
 
 
 class MultiDetectorSelector(QWidget):
+    """
+    Constructs a detector selector consisting of 4 x 4 squares, numbered to be consistent with the SIR numbering scheme.
+    This allows the user to specify which detectors they are interested in viewing / inspecting.
+    """
 
     updated = pyqtSignal()
 
@@ -218,7 +224,10 @@ class MultiDetectorSelector(QWidget):
 
 
 class MultiDitherDetectorSelector(QWidget):
-
+    """
+    A collection of 4 MultiDetectorSelector widgets, which allows the user to choose multiple detectors in multiple
+    dithers for analysis.
+    """
     updated = pyqtSignal()
 
     def __init__(self, detectors, *args):

@@ -24,14 +24,18 @@ red_pen = QPen(QColor('red'))
 green_pen = QPen(QColor('green'))
 
 
-class Rect(QGraphicsRectItem):
+class SpecBox(QGraphicsRectItem):
+    """
+    Represents the location of a 2D spectrum in a QGraphicsScene and allows for interaction, via a context menu and
+    keyuboard shortcuts.
+    """
 
     inactive_opacity = 0.21  # the opacity of rectangles that are not in focus
 
     def __init__(self, *args):
         rect = QRectF(*args)
         super().__init__(rect)
-        self.setOpacity(Rect.inactive_opacity)
+        self.setOpacity(SpecBox.inactive_opacity)
         self.setAcceptHoverEvents(True)
         self.setFlag(QGraphicsItem.ItemIsSelectable)
         self.setPen(green_pen)
@@ -90,7 +94,7 @@ class Rect(QGraphicsRectItem):
     def hoverLeaveEvent(self, event):
         if not self.pinned:
             self.setPen(green_pen)
-            self.setOpacity(Rect.inactive_opacity)
+            self.setOpacity(SpecBox.inactive_opacity)
 
     def mousePressEvent(self, event: 'QGraphicsSceneMouseEvent'):
         keys = event.modifiers()
@@ -111,6 +115,10 @@ class Rect(QGraphicsRectItem):
             self.pin(event.scenePos())
 
     def pin(self, label_pos=None):
+        """
+        Changes the color of the bounding box and places a text label beside the object, containing the object's ID
+        string. Refer to `self.unpin()`.
+        """
         if label_pos is not None:
             self.label = QGraphicsTextItem(f"{self._spec.id}", parent=self)
             self.label.setTransform(flip_vertical, True)
@@ -128,6 +136,9 @@ class Rect(QGraphicsRectItem):
         self.pinned = True
 
     def unpin(self):
+        """
+        Reverses the action performed by `self.pin()`. Returns the object to an unpinned state.
+        """
         self.setPen(green_pen)
         if self.label is not None:
             self.scene().removeItem(self.label)
@@ -135,11 +146,14 @@ class Rect(QGraphicsRectItem):
         self.pinned = False
 
     def keyPressEvent(self, event):
-
         if event.key() in self._key_bindings:
             self._key_bindings[event.key()]()
 
     def handle_right_click(self, pos):
+        """
+        Handles right-click (context menu) events. This implementation turned out to be more robust than implementing
+        the virtual function for handling context menu events.
+        """
         menu = QMenu()
 
         def action(title, slot, caption=None, shortcut=None):
@@ -337,7 +351,7 @@ class Rect(QGraphicsRectItem):
     def open_analysis_tab(self):
         view_tab = self.view.view_tab
         inspector = view_tab.inspector
-        inspector.new_analysis_tab(view_tab.current_dither, view_tab.current_detector, self.spec.id)
+        inspector.new_object_tab(view_tab.current_dither, view_tab.current_detector, self.spec.id)
 
     def open_all_spectra(self):
         view_tab = self.view.view_tab
@@ -375,7 +389,6 @@ class Rect(QGraphicsRectItem):
             info = inspector.location_tables.get_info(self.spec.id)
             info_window = ObjectInfoWindow(info, inspector)
             info_window.show()
-            # todo: refine window placement (imitate table placement)
             self._info_window = info_window
         else:
             m = QMessageBox(0, 'No Object info available',

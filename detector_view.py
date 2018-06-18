@@ -1,16 +1,15 @@
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QGraphicsView, QMenu
-from PyQt5.QtGui import QTransform
 
-from specbox import Rect, flip_vertical
-
-
-#flip_vertical = QTransform(1.0, 0.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0, 1.0)
+from specbox import SpecBox, flip_vertical
 
 
 class View(QGraphicsView):
-
+    """
+    Constructs the widget in which detector images can be viewed. The View is zoomable, using +/- keys, and it is
+    flipped such that the lower-left corner has coordinates (0, 0) and the +y direction is upward.
+    """
     def __init__(self, view_tab):
         super().__init__()
         self._view_tab = view_tab
@@ -28,7 +27,7 @@ class View(QGraphicsView):
 
         item = self.scene().itemAt(event.globalPos(), self.transform())
 
-        if isinstance(item, Rect) and item.contains(event.pos()):
+        if isinstance(item, SpecBox) and item.contains(event.pos()):
             return
 
         if self.clicks_ignored():
@@ -47,9 +46,16 @@ class View(QGraphicsView):
         menu.exec(event.globalPos())
 
     def ignore_clicks(self):
+        """
+        Instructs the `View` instance to ignore the next mouse click.
+        """
         self._ignore_count += 1
 
     def clicks_ignored(self):
+        """
+        Returns True if clicks are currently being ignored, and decrements the internal counter which keeps track of
+        the number of clicks that should be ignored. Returns False if clicks are not being ignored.
+        """
         result = self._ignore_count > 0
         self._ignore_count = max(0, self._ignore_count - 1)
         return result

@@ -5,6 +5,10 @@ from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem, QApplication
 
 
 class SpecTable(QTableWidget):
+    """
+    A Table widget for displaying spectra IDs and orders. Currently, this is intended to be used to display a
+    table of contaminating spectra, but it could be generalized.
+    """
 
     def __init__(self, view, *args):
         super().__init__(*args)
@@ -64,8 +68,11 @@ class SpecTable(QTableWidget):
 
         self.setGeometry(cursor_x - padding, cursor_y, width, height)
 
-    def handle_activated_cell(self, i , j):
-
+    def handle_activated_cell(self, i, j):
+        """
+        This is currently just a placeholder. If double click or other selection events occur in a table cell, they
+        can be candled here. Currently, double clicking or pressing Enter / Return only prints the cell coordinates.
+        """
         print(f'cell {i}, {j}, has been activated.')
 
     def handle_selection(self):

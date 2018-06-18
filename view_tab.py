@@ -5,7 +5,7 @@ from PyQt5.QtGui import QBrush, QColor, QImage, QPixmap
 from PyQt5.QtWidgets import (QGraphicsScene, QWidget, QComboBox, QHBoxLayout, QLabel,
                              QLineEdit, QVBoxLayout, QSpacerItem, QSizePolicy)
 
-from specbox import Rect
+from specbox import SpecBox
 from detector_view import View
 import utils
 
@@ -174,7 +174,7 @@ class ViewTab(QWidget):
             height, width = spec.science.shape
             top = spec.y_offset
 
-            rect = Rect(left, top, width, height)
+            rect = SpecBox(left, top, width, height)
 
             rect.spec = spec
 
@@ -205,13 +205,13 @@ class ViewTab(QWidget):
 
     def remove_boxes_in_view(self):
         for item in self.scene.items():
-            if isinstance(item, Rect) and not item.pinned:
+            if isinstance(item, SpecBox) and not item.pinned:
                 self.scene.removeItem(item)
         self.boxes_visible = False
 
     def remove_pinned_boxes(self):
         for item in self.scene.items():
-            if isinstance(item, Rect) and item.pinned:
+            if isinstance(item, SpecBox) and item.pinned:
                 self.scene.removeItem(item)
 
         if len(self.scene.items()) == 0:
@@ -220,7 +220,7 @@ class ViewTab(QWidget):
     def n_pinned_boxes(self):
         n = 0
         for item in self.scene.items():
-            if isinstance(item, Rect) and item.pinned:
+            if isinstance(item, SpecBox) and item.pinned:
                 n += 1
 
         return n
@@ -270,6 +270,6 @@ class ViewTab(QWidget):
     def get_pinned_spectra(self):
         items = []
         for item in self.scene.items():
-            if isinstance(item, Rect) and item.pinned:
+            if isinstance(item, SpecBox) and item.pinned:
                 items.append(item)
         return items

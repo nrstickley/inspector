@@ -1,7 +1,7 @@
 import numpy as np
 
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QIcon, QBrush, QColor
+from PyQt5.QtGui import QBrush, QColor
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QGridLayout, QMdiArea, QGroupBox, QPushButton, QRadioButton,
                              QCheckBox, QMessageBox)
 
@@ -12,11 +12,17 @@ from detector_selector import MultiDitherDetectorSelector
 import utils
 
 
+# FIXME: these should be provided as inputs
+
 J_WAV = 13697.01  # in angstroms
 H_WAV = 17761.52  # in angstroms
 
 
 class PlotSelector(QWidget):
+    """
+    A widget for selecting the type of plot that will be generated. This also contains the Plot button, which triggers
+    the plotting.
+    """
     X_PIX = 0
     X_WAV = 1
 
@@ -316,6 +322,9 @@ class SpecPlot:
 
 
 class ObjectTab(QWidget):
+    """
+    This class constructs the entire contents of the Object tab.
+    """
     def __init__(self, inspector, dither, detector, object_id, *args):
         super().__init__(*args)
 
@@ -406,7 +415,7 @@ class ObjectTab(QWidget):
 
     def determine_relevant_detectors(self, object_id):
         """
-        returns the detectors in which the spectra of the object can be found, in the format {dither: [detectors]}
+        Returns the detectors in which the spectra of the object can be found, in the format {dither: [detectors]}
         """
         detectors = {}
 

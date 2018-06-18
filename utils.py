@@ -337,7 +337,6 @@ def to_bytes(im, maxval=None):
     counts, bins = np.histogram(scaled.flatten(), bins=300, range=(0, 300))
     scale_factor2 = 44.0 / bins[1 + counts.argmax()]
     scaled *= scale_factor2
-    #plt.hist(scaled.flatten(), bins=128, log=True, histtype='step')
     clipped = np.clip(scaled, 0, 255)
     return clipped.astype(np.uint8).flatten().tobytes()
 

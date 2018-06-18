@@ -38,6 +38,11 @@ DETECTOR_ID = {val: key for key, val in NISP_DETECTOR_MAP.items()}
 
 
 class DispersionSolution:
+    """
+    An implementation of the dispersion solution and inverse dispersion solution code that does not depend upon the
+    SIR C++ module (it potentially also offers higher performance than the SIR code, when provided with many values
+    in an array in a single function call).
+    """
     __slots__ = ['_x_coeffs', '_y_coeffs', '_reference_wav', '_reference_pos', '_dispersion_solution']
 
     HORIZONTAL = 0
@@ -110,7 +115,7 @@ class DispersionSolution:
 
     def compute_wavelength(self, pos):
         """
-        computes the approximate wavelength at the specified position, where the position is a float corresponding
+        Computes the approximate wavelength at the specified position, where the position is a float corresponding
         to the x coordinate of a pixel, if the dispersion is horizontal or the y coordinate of a pixel, if the
         dispersion is vertical.
         """
