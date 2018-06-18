@@ -254,11 +254,13 @@ class ViewTab(QWidget):
 
             for pinned_item in self.get_pinned_spectra():
                 if pinned_item.spec.id == object_id:
+                    pinned_item.grabKeyboard()
                     return None
 
             # this point is only reached if the specified spectrum is not already pinned. Pin the spec
             spec_box, pos = self.show_bounding_box(self.current_dither, self.current_detector, object_id)
             spec_box.pin(pos)
+            spec_box.grabKeyboard()
 
         return spec
 
