@@ -1,6 +1,11 @@
+import copy
+import sys
+import io
+import traceback
+
 from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtGui import QFont
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QTextEdit, QPushButton
+from PyQt5.QtGui import QFont, QColor
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPlainTextEdit, QPushButton
 import matplotlib
 
 matplotlib.use('Qt5Agg')
@@ -8,6 +13,9 @@ matplotlib.use('Qt5Agg')
 from matplotlib.backends.backend_qt5agg import FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 from matplotlib import pyplot as plt
+import numpy as np
+
+from syntax import PythonHighlighter
 
 
 class PlotWindow(QWidget):
@@ -44,12 +52,14 @@ class PlotWindow(QWidget):
         self.figure_widget = FigureCanvas(self.fig)
 
         toolbar = NavigationToolbar(self.figure_widget, self)
+        toolbar.addAction('Edit', self.show_editor)
 
         layout.addWidget(self.figure_widget)
         layout.addWidget(toolbar)
 
         self._command_box = None
         self._run_command_btn = None
+        self._highlighter = None
 
         self.setLayout(layout)
 
@@ -67,7 +77,7 @@ class PlotWindow(QWidget):
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_Q or event.key() == Qt.Key_Escape:
             self.close()
-        if event.modifiers() & Qt.ControlModifier and event.key() == Qt.Key_E:
+        if event.modifiers() & Qt.ControlModifier and event.key() == Qt.Key_M:
             self.show_editor()
 
     def closeEvent(self, event):
@@ -77,23 +87,23 @@ class PlotWindow(QWidget):
 
     def show_editor(self):
         if self._command_box is None:
-            self._command_box = QTextEdit()
+            self._command_box = QPlainTextEdit()
+            self._command_box.setStyleSheet('background-color:#2f3030; font-family:"monospace"; color:#f7f7f7')
+            self._highlighter = PythonHighlighter(self._command_box.document())
             self._command_box.setPlaceholderText('Enter plotting commands here, using `fig` and `axis`.')
             self._command_box.setMinimumHeight(25)
-            self._command_box.setFont(QFont('monospace'))
+
             self._run_command_btn = QPushButton('Execute Command')
             self._run_command_btn.setMinimumSize(150, 25)
             self._run_command_btn.setMaximumSize(200, 30)
             self._run_command_btn.pressed.connect(self.exec_command)
 
             self.layout().addWidget(self._command_box)
-            self.layout().setAlignment(self._run_command_btn, Qt.AlignHCenter)
             self.layout().addWidget(self._run_command_btn)
+            self.layout().setAlignment(self._run_command_btn, Qt.AlignHCenter)
         else:
-            print('removing the editor')
             self._command_box.hide()
             self._run_command_btn.hide()
-            # TODO: check on this:
             self.layout().removeWidget(self._run_command_btn)
             self.layout().removeWidget(self._command_box)
             self._run_command_btn = None
@@ -102,8 +112,37 @@ class PlotWindow(QWidget):
             self.update()
 
     def exec_command(self):
+        stdout = sys.stdout
+
+        sys.stdout = out = io.StringIO()
+        err = io.StringIO()
+
+        local_vars = copy.copy(self.__dict__)
+        local_vars['exit'] = self.show_editor
+        local_vars['close'] = self.show_editor
+        local_vars['np'] = np
+
         command_text = self._command_box.toPlainText()
-        print("running command:")
-        print(command_text)
-        exec(command_text, {}, self.__dict__)
+
+        try:
+            exec(command_text, {}, local_vars)
+        except Exception as ex:
+            err.write(repr(ex))
+            traceback.print_stack(file=err)
+
+        total_output = command_text
+        std_output = out.getvalue()
+
+        if len(std_output) > 0:
+            total_output += f'\n\n"""\nOutput:\n\n{std_output}\n"""\n'
+
+        error = err.getvalue()
+
+        if len(error) > 0:
+            total_output += f'\n\nError:\n\n{error}'
+
+        self._command_box.setPlainText(total_output)
+
         self.fig.canvas.draw()
+
+        sys.stdout = stdout
