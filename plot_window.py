@@ -1,5 +1,6 @@
 from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtWidgets import QWidget, QVBoxLayout
+from PyQt5.QtGui import QFont
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QTextEdit, QPushButton
 import matplotlib
 
 matplotlib.use('Qt5Agg')
@@ -47,6 +48,9 @@ class PlotWindow(QWidget):
         layout.addWidget(self.figure_widget)
         layout.addWidget(toolbar)
 
+        self._command_box = None
+        self._run_command_btn = None
+
         self.setLayout(layout)
 
     @property
@@ -63,8 +67,43 @@ class PlotWindow(QWidget):
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_Q or event.key() == Qt.Key_Escape:
             self.close()
+        if event.modifiers() & Qt.ControlModifier and event.key() == Qt.Key_E:
+            self.show_editor()
 
     def closeEvent(self, event):
         self.closing.emit(self._descriptor)
         plt.close(self.fig)
         super().closeEvent(event)
+
+    def show_editor(self):
+        if self._command_box is None:
+            self._command_box = QTextEdit()
+            self._command_box.setPlaceholderText('Enter plotting commands here, using `fig` and `axis`.')
+            self._command_box.setMinimumHeight(25)
+            self._command_box.setFont(QFont('monospace'))
+            self._run_command_btn = QPushButton('Execute Command')
+            self._run_command_btn.setMinimumSize(150, 25)
+            self._run_command_btn.setMaximumSize(200, 30)
+            self._run_command_btn.pressed.connect(self.exec_command)
+
+            self.layout().addWidget(self._command_box)
+            self.layout().setAlignment(self._run_command_btn, Qt.AlignHCenter)
+            self.layout().addWidget(self._run_command_btn)
+        else:
+            print('removing the editor')
+            self._command_box.hide()
+            self._run_command_btn.hide()
+            # TODO: check on this:
+            self.layout().removeWidget(self._run_command_btn)
+            self.layout().removeWidget(self._command_box)
+            self._run_command_btn = None
+            self._command_box = None
+            self.layout().update()
+            self.update()
+
+    def exec_command(self):
+        command_text = self._command_box.toPlainText()
+        print("running command:")
+        print(command_text)
+        exec(command_text, {}, self.__dict__)
+        self.fig.canvas.draw()
