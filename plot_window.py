@@ -4,7 +4,7 @@ import io
 import traceback
 
 from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtGui import QFont, QColor
+from PyQt5.QtGui import QFont, QColor, QPalette
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPlainTextEdit, QPushButton
 import matplotlib
 
@@ -16,6 +16,24 @@ from matplotlib import pyplot as plt
 import numpy as np
 
 from syntax import PythonHighlighter
+
+
+class CommandBox(QPlainTextEdit):
+    def __init__(self, plot_window):
+        super().__init__()
+        self._plot_window = plot_window
+        self.setFont(QFont('monospace'))
+        p = self.palette()
+        p.setColor(QPalette.All, QPalette.Base,  QColor('#2f3030'))
+        p.setColor(QPalette.All, QPalette.Text,  QColor('#f7f7f7'))
+        self.setPalette(p)
+        self._highlighter = PythonHighlighter(self.document())
+
+    def keyPressEvent(self, event):
+        if Qt.ShiftModifier & event.modifiers() and (event.key() == Qt.Key_Enter or event.key() == Qt.Key_Return):
+            self._plot_window.exec_command()
+        else:
+            super().keyPressEvent(event)
 
 
 class PlotWindow(QWidget):
@@ -50,6 +68,7 @@ class PlotWindow(QWidget):
         self.fig.set_dpi(100)
 
         self.figure_widget = FigureCanvas(self.fig)
+        self.figure_widget.setMinimumHeight(500)
 
         toolbar = NavigationToolbar(self.figure_widget, self)
         toolbar.addAction('Edit', self.show_editor)
@@ -87,11 +106,9 @@ class PlotWindow(QWidget):
 
     def show_editor(self):
         if self._command_box is None:
-            self._command_box = QPlainTextEdit()
-            self._command_box.setStyleSheet('background-color:#2f3030; font-family:"monospace"; color:#f7f7f7')
-            self._highlighter = PythonHighlighter(self._command_box.document())
+            self._command_box = CommandBox(self)
             self._command_box.setPlaceholderText('Enter plotting commands here, using `fig` and `axis`.')
-            self._command_box.setMinimumHeight(25)
+            self._command_box.setMinimumHeight(200)
 
             self._run_command_btn = QPushButton('Execute Command')
             self._run_command_btn.setMinimumSize(150, 25)
@@ -144,5 +161,8 @@ class PlotWindow(QWidget):
         self._command_box.setPlainText(total_output)
 
         self.fig.canvas.draw()
+
+        vbar = self._command_box.verticalScrollBar()
+        vbar.setValue(vbar.maximum())
 
         sys.stdout = stdout
