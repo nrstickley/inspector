@@ -65,6 +65,7 @@ class PythonHighlighter(QSyntaxHighlighter):
                   (r'\bfig\b', 0, STYLES['builtin_var']),
                   (r'\baxis\b', 0, STYLES['builtin_var']),
                   (r'\bnp\b', 0, STYLES['builtin_var']),
+                  (r'\bOut\b', 0, STYLES['builtin_var']),
 
                   # Double-quoted string, possibly containing escape sequences
                   (r'"[^"\\]*(\\.[^"\\]*)*"', 0, STYLES['string']),

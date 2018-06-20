@@ -4,7 +4,7 @@ import io
 import traceback
 
 from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtGui import QFont, QColor, QPalette
+from PyQt5.QtGui import QFont, QColor, QPalette, QTextCursor
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPlainTextEdit, QPushButton
 import matplotlib
 
@@ -28,10 +28,16 @@ class CommandBox(QPlainTextEdit):
         p.setColor(QPalette.All, QPalette.Text,  QColor('#f7f7f7'))
         self.setPalette(p)
         self._highlighter = PythonHighlighter(self.document())
+        self.setFocusPolicy(Qt.StrongFocus)
+        self.local_vars = {}
 
     def keyPressEvent(self, event):
         if Qt.ShiftModifier & event.modifiers() and (event.key() == Qt.Key_Enter or event.key() == Qt.Key_Return):
             self._plot_window.exec_command()
+        elif Qt.ControlModifier & event.modifiers() and event.key() == Qt.Key_L:
+            self.clear()
+        elif Qt.ControlModifier & event.modifiers() and event.key() == Qt.Key_D:
+            self._plot_window.show_editor()
         else:
             super().keyPressEvent(event)
 
@@ -46,10 +52,10 @@ class PlotWindow(QWidget):
         super().__init__(*args)
 
         self.setWindowTitle(title)
-        self.setWindowFlag(Qt.WindowStaysOnTopHint, True)
         self.setWindowFlag(Qt.Window, True)
         self.setContentsMargins(0, 0, 0, 0)
         self._descriptor = ''
+        self.setFocusPolicy(Qt.StrongFocus)
 
         layout = QVBoxLayout()
         layout.setContentsMargins(0, 0, 0, 0)
@@ -110,6 +116,13 @@ class PlotWindow(QWidget):
             self._command_box.setPlaceholderText('Enter plotting commands here, using `fig` and `axis`.')
             self._command_box.setMinimumHeight(200)
 
+            local_vars = copy.copy(self.__dict__)
+            local_vars['exit'] = self.show_editor
+            local_vars['close'] = self.show_editor
+            local_vars['np'] = np
+
+            self._command_box.local_vars = local_vars
+
             self._run_command_btn = QPushButton('Execute Command')
             self._run_command_btn.setMinimumSize(150, 25)
             self._run_command_btn.setMaximumSize(200, 30)
@@ -129,36 +142,51 @@ class PlotWindow(QWidget):
             self.update()
 
     def exec_command(self):
+        if self._command_box is None:
+            return
+
         stdout = sys.stdout
+
+        separator = '\n* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *'
 
         sys.stdout = out = io.StringIO()
         err = io.StringIO()
 
-        local_vars = copy.copy(self.__dict__)
-        local_vars['exit'] = self.show_editor
-        local_vars['close'] = self.show_editor
-        local_vars['np'] = np
+        command_box_text = self._command_box.toPlainText()
 
-        command_text = self._command_box.toPlainText()
+        cursor_pos = command_box_text.rfind(separator)
+
+        command_text = command_box_text if cursor_pos == -1 else command_box_text[cursor_pos + len(separator):].strip()
 
         try:
-            exec(command_text, {}, local_vars)
+            exec(command_text, {}, self._command_box.local_vars)
         except Exception as ex:
             err.write(repr(ex))
             traceback.print_stack(file=err)
 
-        total_output = command_text
+        total_output = command_box_text
         std_output = out.getvalue()
 
         if len(std_output) > 0:
-            total_output += f'\n\n"""\nOutput:\n\n{std_output}\n"""\n'
+            total_output += f'\n\nOut:\n\n{std_output}\n'
 
         error = err.getvalue()
 
         if len(error) > 0:
             total_output += f'\n\nError:\n\n{error}'
 
+        total_output += separator + '\n\n'
+
+        if self._command_box is None:
+            self.fig.canvas.draw()
+            sys.stdout = stdout
+            return
+
         self._command_box.setPlainText(total_output)
+
+        text_cursor = self._command_box.textCursor()
+        text_cursor.movePosition(QTextCursor.End)
+        self._command_box.setTextCursor(text_cursor)
 
         self.fig.canvas.draw()
 
