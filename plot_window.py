@@ -101,7 +101,9 @@ class PlotWindow(QWidget):
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_Q or event.key() == Qt.Key_Escape:
+            self.closing.emit(self._descriptor)
             self.close()
+
         if event.modifiers() & Qt.ControlModifier and event.key() == Qt.Key_M:
             self.show_editor()
 
@@ -147,7 +149,7 @@ class PlotWindow(QWidget):
 
         stdout = sys.stdout
 
-        separator = '\n* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *'
+        separator = '\n* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *'
 
         sys.stdout = out = io.StringIO()
         err = io.StringIO()
@@ -168,7 +170,7 @@ class PlotWindow(QWidget):
         std_output = out.getvalue()
 
         if len(std_output) > 0:
-            total_output += f'\n\nOut:\n\n{std_output}\n'
+            total_output += f'\n\nOut:\n\n{std_output}'
 
         error = err.getvalue()
 

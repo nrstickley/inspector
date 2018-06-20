@@ -439,7 +439,13 @@ class ObjectTab(QWidget):
             self.plot_selector.plot_button.setEnabled(True)
 
     def handle_closed_subwindow(self, descriptor):
-        self._plot_descriptors.remove(descriptor)
+        if descriptor in self._plot_descriptors:
+            self._plot_descriptors.remove(descriptor)
+
+        active_window = self.mdi.activeSubWindow()
+
+        if active_window is not None and descriptor == active_window.widget().descriptor:
+            self.mdi.closeActiveSubWindow()
 
     def open_detectors(self):
 

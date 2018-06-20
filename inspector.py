@@ -91,12 +91,12 @@ class Inspector:
         load_nisp.triggered.connect(self.load_exposures)
 
         load_decon = QAction('Load Spectra', main_menu)
-        load_decon.setShortcut('Ctrl+D')
+        load_decon.setShortcut('Ctrl+P')
         load_decon.setStatusTip('Load one or more decontaminated spectra collections, listed in a JSON file.')
         load_decon.triggered.connect(self.load_spectra)
 
         load_loctab = QAction('Load Location Tables', main_menu)
-        load_loctab.setShortcut('Ctrl+L')
+        load_loctab.setShortcut('Ctrl+T')
         load_loctab.setToolTip('Load spectral metadata from the location tables.')
         load_loctab.triggered.connect(self.load_location_tables)
 
