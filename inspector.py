@@ -192,6 +192,11 @@ class Inspector:
 
         self._session['spectra'] = filename
 
+        # need to update the detector views
+
+        for view_tab in self.view_tab:
+            view_tab.update_view()
+
     def load_exposures(self):
         """Loads Background-subtracted NISP Exposures."""
         if not self._loading_session:

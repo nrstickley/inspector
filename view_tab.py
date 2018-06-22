@@ -32,12 +32,17 @@ class ObjectSelectionArea(QHBoxLayout):
 
         detector_label, self.detector_selector = self.make_selector('detector')
 
+        data_label, self.data_selector = self.make_selector('data')
+
         selector_layout.addSpacerItem(QSpacerItem(130, 10, QSizePolicy.Maximum, QSizePolicy.Maximum))
         selector_layout.addWidget(dither_label, Qt.AlignCenter)
         selector_layout.addWidget(self.dither_selector)
-        selector_layout.addSpacerItem(QSpacerItem(75, 10, QSizePolicy.Maximum, QSizePolicy.Maximum))
+        selector_layout.addSpacerItem(QSpacerItem(55, 10, QSizePolicy.Maximum, QSizePolicy.Maximum))
         selector_layout.addWidget(detector_label, Qt.AlignCenter)
         selector_layout.addWidget(self.detector_selector)
+        selector_layout.addSpacerItem(QSpacerItem(55, 10, QSizePolicy.Maximum, QSizePolicy.Maximum))
+        selector_layout.addWidget(data_label, Qt.AlignCenter)
+        selector_layout.addWidget(self.data_selector)
 
         self.searchbox = QLineEdit()
 
@@ -68,6 +73,8 @@ class ObjectSelectionArea(QHBoxLayout):
 
 class ViewTab(QWidget):
 
+    LAYERS = ('original', 'model', 'residual')
+
     def __init__(self, inspector, *args):
 
         super().__init__(*args)
@@ -77,9 +84,8 @@ class ViewTab(QWidget):
         self.current_detector = 1
         self.current_dither = 1
         self.boxes_visible = False
-        self.decontamination_visible = False
-        self.raw_pixmap_item = None
-        self.decontamination_pixmap_item = None
+
+        self.pixmap_item = {layer:None for layer in self.LAYERS}
 
         self._layout = QVBoxLayout()
 
@@ -103,13 +109,15 @@ class ViewTab(QWidget):
 
         self.scene.setBackgroundBrush(self._background)
 
-        self._lank_pixmap = self.scene.addPixmap(self._blank_image)
+        self._blank_pixmap = self.scene.addPixmap(self._blank_image)
 
         self.view.setScene(self.scene)
 
         self._layout.addWidget(self.view)
 
         self.setLayout(self._layout)
+
+        self.current_layer = 'original'
 
     def init_view(self):
         # display dither 1, detector 1 in single view
@@ -132,6 +140,11 @@ class ViewTab(QWidget):
             self.selection_area.detector_selector.addItem(str(detector), detector)
 
         self.selection_area.detector_selector.activated[int].connect(self.change_detector)
+
+        for layer in self.LAYERS:
+            self.selection_area.data_selector.addItem(layer)
+
+        self.selection_area.data_selector.activated[str].connect(self.change_layer)
 
         self.boxes_visible = False
 
@@ -160,13 +173,23 @@ class ViewTab(QWidget):
         pixmap, _ = utils.np_to_pixmap(data, data.max())
 
         self.scene.clear()
-        self.raw_pixmap_item = self.scene.addPixmap(pixmap)
+        self.current_layer = 'original'
+        self.pixmap_item[self.current_layer] = self.scene.addPixmap(pixmap)
 
         self.boxes_visible = False
 
         self.inspector.rename_tab(self)
 
         self.inspector.detector_info_window.update_detector(self.current_dither, self.current_detector)
+
+        if self.inspector.collection is not None:
+            collection = self.inspector.collection
+            dither = self.current_dither
+            detector = self.current_detector
+            if dither in collection.get_dithers() and detector in collection.get_detectors(dither):
+                self.selection_area.data_selector.setEnabled(True)
+        else:
+            self.selection_area.data_selector.setDisabled(True)
 
     def show_bounding_box(self, dither, detector, object_id):
         spec = self.inspector.collection.get_spectrum(dither, detector, object_id)
@@ -218,44 +241,6 @@ class ViewTab(QWidget):
             if isinstance(item, SpecBox) and not item.pinned:
                 self.scene.removeItem(item)
         self.boxes_visible = False
-
-    def show_decontaminated_in_view(self):
-        if self.decontamination_visible:
-            return
-
-        self.scene.removeItem(self.raw_pixmap_item)
-
-        if self.decontamination_pixmap_item is None:
-            data = self.inspector.exposures[self.current_dither][self.current_detector].data
-            decon_data = self.get_decontaminated_image()
-            _, pixmap = utils.np_to_pixmap(decon_data, data.max(), data.min(), decon_data)
-            self.decontamination_pixmap_item = self.scene.addPixmap(pixmap)
-            self.decontamination_pixmap_item.setZValue(-1.0)
-        else:
-            self.scene.addItem(self.decontamination_pixmap_item)
-        self.decontamination_visible = True
-
-    def remove_decontaminated_in_view(self):
-        self.scene.removeItem(self.decontamination_pixmap_item)
-        self.raw_pixmap_item.setZValue(-1.0)
-        self.scene.addItem(self.raw_pixmap_item)
-        self.decontamination_visible = False
-
-    def remove_pinned_boxes(self):
-        for item in self.scene.items():
-            if isinstance(item, SpecBox) and item.pinned:
-                self.scene.removeItem(item)
-
-        if len(self.scene.items()) == 0:
-            self.boxes_visible = False
-
-    def n_pinned_boxes(self):
-        n = 0
-        for item in self.scene.items():
-            if isinstance(item, SpecBox) and item.pinned:
-                n += 1
-
-        return n
 
     def active_detector_has_spectral_data(self):
         if self.inspector.exposures is None or self.inspector.collection is None:
@@ -311,6 +296,10 @@ class ViewTab(QWidget):
     def get_decontaminated_image(self):
         """removes all model contaminants from the detector and returns the residual"""
         data = self.inspector.exposures[self.current_dither][self.current_detector].data
+        return data - self.get_simulated_image()
+
+    def get_simulated_image(self):
+        data = self.inspector.exposures[self.current_dither][self.current_detector].data
         sim = np.zeros_like(data)
 
         for object_id in self.inspector.collection.get_object_ids(self.current_dither, self.current_detector):
@@ -326,4 +315,59 @@ class ViewTab(QWidget):
                 region = (slice(model.y_offset, model.y_offset + height), slice(model.x_offset, model.x_offset + width))
                 sim[region] += model.science
 
-        return data - sim
+        return sim
+
+    def get_pixmap(self, image_data):
+        data = self.inspector.exposures[self.current_dither][self.current_detector].data
+        _, pixmap = utils.np_to_pixmap(data, data.max(), data.min(), image_data)
+        return pixmap
+
+    def remove_pinned_boxes(self):
+        for item in self.scene.items():
+            if isinstance(item, SpecBox) and item.pinned:
+                self.scene.removeItem(item)
+
+        if len(self.scene.items()) == 0:
+            self.boxes_visible = False
+
+    def n_pinned_boxes(self):
+        n = 0
+        for item in self.scene.items():
+            if isinstance(item, SpecBox) and item.pinned:
+                n += 1
+
+        return n
+
+    def change_layer(self, layer):
+        if self.current_layer == layer:
+            return
+
+        print('switching to ', layer)
+
+        if layer not in self.LAYERS:
+            return
+
+        self.scene.removeItem(self.pixmap_item[self.current_layer])
+
+        if self.pixmap_item[layer] is None:
+            if layer == 'original':
+                image_data = self.inspector.exposures[self.current_dither][self.current_detector].data
+                pixmap = utils.np_to_pixmap(image_data, image_data.max())
+            elif layer == 'residual':
+                image_data = self.get_decontaminated_image()
+                pixmap = self.get_pixmap(image_data)
+            elif layer == 'model':
+                image_data = self.get_simulated_image()
+                pixmap = self.get_pixmap(image_data)
+
+            pixmap_item = self.scene.addPixmap(pixmap)
+            pixmap_item.setZValue(-1.0)
+            self.pixmap_item[layer] = pixmap_item
+        else:
+            self.scene.addItem(self.pixmap_item[layer])
+
+        self.current_layer = layer
+
+
+
+

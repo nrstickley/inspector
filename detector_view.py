@@ -35,17 +35,13 @@ class View(QGraphicsView):
 
         menu = QMenu(self)
         show_hide_boxes = 'Hide' if self._view_tab.boxes_visible else 'Show'
-        show_hide_decontaminated = 'Hide' if self._view_tab.decontamination_visible else 'Show'
         show_hide_bounding = menu.addAction(show_hide_boxes + " bounding boxes", self._view_tab.toggle_bounding_boxes)
-        show_hide_decontaminated_detector = menu.addAction(show_hide_decontaminated + " decontaminated detector",
-                                                           self._view_tab.toggle_decontaminated)
 
         if self._view_tab.n_pinned_boxes() > 0:
             menu.addAction('Remove pinned boxes', self._view_tab.remove_pinned_boxes)
 
         if not self._view_tab.active_detector_has_spectral_data():
             show_hide_bounding.setDisabled(True)
-            show_hide_decontaminated_detector.setDisabled(True)
 
         menu.exec(event.globalPos())
 
