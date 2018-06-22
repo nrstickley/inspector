@@ -175,6 +175,7 @@ class ViewTab(QWidget):
         self.scene.clear()
         self.current_layer = 'original'
         self.pixmap_item[self.current_layer] = self.scene.addPixmap(pixmap)
+        self.pixmap_item[self.current_layer].setZValue(-1.0)
 
         self.boxes_visible = False
 
