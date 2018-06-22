@@ -321,28 +321,48 @@ def apply_contaminant(contaminant_flux, total_contamination):
     canvas[can_bottom:can_top, can_left:can_right] += contam[contam_bottom:contam_top, contam_left:contam_right]
 
 
-def to_bytes(im, maxval=None):
+def to_bytes(im, maxval=None, minval=None, aux_im=None):
     """
     Scales the input image to fit the dynamic range between 0 and 255, inclusive. Then returns
     the array as an array of bytes (a string).
+    If aux_im is provided, then aux_im is scaled using the same parameters as im, even though its contents are
+    different.
     """
     if maxval is None:
         maxval = im.max()
 
-    data = (im - im.min()) / (maxval - im.min())
+    if minval is None:
+        minval = im.min()
+
+    data = (im - minval) / (maxval - minval)
     counts, bins = np.histogram(data.flatten(), bins=300)
     scale_factor = 0.017 / bins[1 + counts.argmax()]
     scaled = 2 * 350 * scale_factor * (np.arctan(1.1e6 * data.astype(np.float32) / maxval) / np.pi)
-    scaled -= np.percentile(scaled, 0.05)
+    shift = np.percentile(scaled, 0.05)
+    scaled -= shift
     counts, bins = np.histogram(scaled.flatten(), bins=300, range=(0, 300))
     scale_factor2 = 44.0 / bins[1 + counts.argmax()]
     scaled *= scale_factor2
     clipped = np.clip(scaled, 0, 255)
-    return clipped.astype(np.uint8).flatten().tobytes()
+    if aux_im is not None:
+        aux_data = (aux_im - minval) / (maxval - minval)
+        scaled_aux = 2 * 350 * scale_factor * (np.arctan(1.1e6 * aux_data.astype(np.float32) / maxval) / np.pi)
+        scaled_aux -= shift
+        scaled_aux *= scale_factor2
+        aux_clipped = np.clip(scaled_aux, 0, 255)
+        aux_bytes = aux_clipped.astype(np.uint8).flatten().tobytes()
+    else:
+        aux_bytes = None
+    return clipped.astype(np.uint8).flatten().tobytes(), aux_bytes
 
 
-def np_to_pixmap(array, maxval):
+def np_to_pixmap(array, maxval=None, minval=None, aux_array=None):
     height, width = array.shape
-    image_bytes = to_bytes(array, maxval)
+    image_bytes, aux_bytes = to_bytes(array, maxval, minval, aux_array)
     image = QImage(image_bytes, width, height, width, QImage.Format_Grayscale8)
-    return QPixmap(image)
+    if aux_array is not None:
+        aux_image = QImage(aux_bytes, width, height, width, QImage.Format_Grayscale8)
+        return QPixmap(image), QPixmap(aux_image)
+    else:
+        return QPixmap(image), None
+

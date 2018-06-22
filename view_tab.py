@@ -1,4 +1,5 @@
 
+import numpy as np
 
 from PyQt5.QtCore import Qt, QPointF
 from PyQt5.QtGui import QBrush, QColor, QImage, QPixmap
@@ -76,6 +77,9 @@ class ViewTab(QWidget):
         self.current_detector = 1
         self.current_dither = 1
         self.boxes_visible = False
+        self.decontamination_visible = False
+        self.raw_pixmap_item = None
+        self.decontamination_pixmap_item = None
 
         self._layout = QVBoxLayout()
 
@@ -153,10 +157,10 @@ class ViewTab(QWidget):
 
         data = self.inspector.exposures[self.current_dither][self.current_detector].data
 
-        pixmap = utils.np_to_pixmap(data, data.max())
+        pixmap, _ = utils.np_to_pixmap(data, data.max())
 
         self.scene.clear()
-        self.scene.addPixmap(pixmap)
+        self.raw_pixmap_item = self.scene.addPixmap(pixmap)
 
         self.boxes_visible = False
 
@@ -199,6 +203,12 @@ class ViewTab(QWidget):
         else:
             self.remove_boxes_in_view()
 
+    def toggle_decontaminated(self):
+        if not self.decontamination_visible:
+            self.show_decontaminated_in_view()
+        else:
+            self.remove_decontaminated_in_view()
+
     def show_boxes_in_view(self):
         self.show_bounding_boxes(self.current_dither, self.current_detector)
         self.boxes_visible = True
@@ -208,6 +218,28 @@ class ViewTab(QWidget):
             if isinstance(item, SpecBox) and not item.pinned:
                 self.scene.removeItem(item)
         self.boxes_visible = False
+
+    def show_decontaminated_in_view(self):
+        if self.decontamination_visible:
+            return
+
+        self.scene.removeItem(self.raw_pixmap_item)
+
+        if self.decontamination_pixmap_item is None:
+            data = self.inspector.exposures[self.current_dither][self.current_detector].data
+            decon_data = self.get_decontaminated_image()
+            _, pixmap = utils.np_to_pixmap(decon_data, data.max(), data.min(), decon_data)
+            self.decontamination_pixmap_item = self.scene.addPixmap(pixmap)
+            self.decontamination_pixmap_item.setZValue(-1.0)
+        else:
+            self.scene.addItem(self.decontamination_pixmap_item)
+        self.decontamination_visible = True
+
+    def remove_decontaminated_in_view(self):
+        self.scene.removeItem(self.decontamination_pixmap_item)
+        self.raw_pixmap_item.setZValue(-1.0)
+        self.scene.addItem(self.raw_pixmap_item)
+        self.decontamination_visible = False
 
     def remove_pinned_boxes(self):
         for item in self.scene.items():
@@ -275,3 +307,23 @@ class ViewTab(QWidget):
             if isinstance(item, SpecBox) and item.pinned:
                 items.append(item)
         return items
+
+    def get_decontaminated_image(self):
+        """removes all model contaminants from the detector and returns the residual"""
+        data = self.inspector.exposures[self.current_dither][self.current_detector].data
+        sim = np.zeros_like(data)
+
+        for object_id in self.inspector.collection.get_object_ids(self.current_dither, self.current_detector):
+            model = self.inspector.collection.get_model(self.current_dither, self.current_detector, object_id, 1)
+            if model is not None:
+                height, width = model.pixels.shape
+                region = (slice(model.y_offset, model.y_offset + height), slice(model.x_offset, model.x_offset + width))
+                sim[region] += model.pixels
+            else:
+                # there is no model because this was not contaminated. The spectrum itself is essentially the model
+                model = self.inspector.collection.get_spectrum(self.current_dither, self.current_detector, object_id)
+                height, width = model.science.shape
+                region = (slice(model.y_offset, model.y_offset + height), slice(model.x_offset, model.x_offset + width))
+                sim[region] += model.science
+
+        return data - sim
