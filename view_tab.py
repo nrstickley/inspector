@@ -33,6 +33,7 @@ class ObjectSelectionArea(QHBoxLayout):
         detector_label, self.detector_selector = self.make_selector('detector')
 
         data_label, self.data_selector = self.make_selector('data')
+        self.data_selector.setMinimumWidth(175)
 
         selector_layout.addSpacerItem(QSpacerItem(130, 10, QSizePolicy.Maximum, QSizePolicy.Maximum))
         selector_layout.addWidget(dither_label, Qt.AlignCenter)
@@ -73,7 +74,7 @@ class ObjectSelectionArea(QHBoxLayout):
 
 class ViewTab(QWidget):
 
-    LAYERS = ('original', 'model', 'residual')
+    LAYERS = ('original', 'model', 'decontaminated residual', 'model residual')
 
     def __init__(self, inspector, *args):
 
@@ -294,12 +295,12 @@ class ViewTab(QWidget):
                 items.append(item)
         return items
 
-    def get_decontaminated_image(self):
-        """removes all model contaminants from the detector and returns the residual"""
+    def get_model_residual_image(self):
+        """removes all model contaminants from the detector and returns the model residual"""
         data = self.inspector.exposures[self.current_dither][self.current_detector].data
-        return data - self.get_simulated_image()
+        return data - self.get_model_image()
 
-    def get_simulated_image(self):
+    def get_model_image(self):
         data = self.inspector.exposures[self.current_dither][self.current_detector].data
         sim = np.zeros_like(data)
 
@@ -317,6 +318,18 @@ class ViewTab(QWidget):
                 sim[region] += model.science
 
         return sim
+
+    def get_residual_image(self):
+        data = self.inspector.exposures[self.current_dither][self.current_detector].data
+        decon = np.zeros_like(data)
+
+        for object_id in self.inspector.collection.get_object_ids(self.current_dither, self.current_detector):
+            spec = self.inspector.collection.get_spectrum(self.current_dither, self.current_detector, object_id)
+            height, width = spec.science.shape
+            region = (slice(spec.y_offset, spec.y_offset + height), slice(spec.x_offset, spec.x_offset + width))
+            decon[region] += spec.science
+
+        return data - decon
 
     def get_pixmap(self, image_data):
         data = self.inspector.exposures[self.current_dither][self.current_detector].data
@@ -354,11 +367,14 @@ class ViewTab(QWidget):
             if layer == 'original':
                 image_data = self.inspector.exposures[self.current_dither][self.current_detector].data
                 pixmap = utils.np_to_pixmap(image_data, image_data.max())
-            elif layer == 'residual':
-                image_data = self.get_decontaminated_image()
+            elif layer == 'model residual':
+                image_data = self.get_model_residual_image()
+                pixmap = self.get_pixmap(image_data)
+            elif layer == 'decontaminated residual':
+                image_data = self.get_residual_image()
                 pixmap = self.get_pixmap(image_data)
             elif layer == 'model':
-                image_data = self.get_simulated_image()
+                image_data = self.get_model_image()
                 pixmap = self.get_pixmap(image_data)
 
             pixmap_item = self.scene.addPixmap(pixmap)
