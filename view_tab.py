@@ -1,3 +1,5 @@
+import os
+import inspect
 
 import numpy as np
 
@@ -106,7 +108,9 @@ class ViewTab(QWidget):
 
         self._background = QBrush(QColor('#56595e'))
 
-        self._blank_image = QPixmap(QImage('./load-exposure-message.svg'))
+        executable_directory = os.path.dirname(os.path.abspath(inspect.stack()[0][1]))
+
+        self._blank_image = QPixmap(QImage(executable_directory + '/load-exposure-message.svg'))
 
         self.scene.setBackgroundBrush(self._background)
 

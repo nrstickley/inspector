@@ -9,6 +9,7 @@ TODO:
 
 import sys
 import os
+import inspect
 import json
 
 import numpy as np
@@ -464,7 +465,9 @@ class Inspector:
 
         main.setCentralWidget(tabs)
 
-        main.setWindowIcon(QIcon('./Euclid.png'))
+        executable_directory = os.path.dirname(os.path.abspath(inspect.stack()[0][1]))
+
+        main.setWindowIcon(QIcon(executable_directory + '/Euclid.png'))
 
         main.setContentsMargins(0, 5, 0, 0)
 
