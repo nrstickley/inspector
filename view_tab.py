@@ -88,7 +88,12 @@ class ViewTab(QWidget):
         self.current_dither = 1
         self.boxes_visible = False
 
-        self.pixmap_item = {layer:None for layer in self.LAYERS}
+        self.pixmap_item = {}  # {dither: {detector: {layer: pixmap}}
+
+        for dither in (1, 2, 3, 4):
+            self.pixmap_item[dither] = {}
+            for detector in range(1, 17):
+                self.pixmap_item[dither][detector] = {layer :None for layer in self.LAYERS}
 
         self._layout = QVBoxLayout()
 
@@ -179,8 +184,10 @@ class ViewTab(QWidget):
 
         self.scene.clear()
         self.current_layer = 'original'
-        self.pixmap_item[self.current_layer] = self.scene.addPixmap(pixmap)
-        self.pixmap_item[self.current_layer].setZValue(-1.0)
+        original_index = self.selection_area.data_selector.findText(self.current_layer)
+        self.selection_area.data_selector.setCurrentIndex(original_index)
+        self.pixmap_item[self.current_dither][self.current_detector][self.current_layer] = self.scene.addPixmap(pixmap)
+        self.pixmap_item[self.current_dither][self.current_detector][self.current_layer].setZValue(-1.0)
 
         self.boxes_visible = False
 
@@ -315,7 +322,7 @@ class ViewTab(QWidget):
                 region = (slice(model.y_offset, model.y_offset + height), slice(model.x_offset, model.x_offset + width))
                 sim[region] += model.pixels
             else:
-                # there is no model because this was not contaminated. The spectrum itself is essentially the model
+                # there is no model because this was not contaminated. The spectrum itself is essentially the model.
                 model = self.inspector.collection.get_spectrum(self.current_dither, self.current_detector, object_id)
                 height, width = model.science.shape
                 region = (slice(model.y_offset, model.y_offset + height), slice(model.x_offset, model.x_offset + width))
@@ -360,14 +367,14 @@ class ViewTab(QWidget):
         if self.current_layer == layer:
             return
 
-        print('switching to ', layer)
+        print('switching to', layer)
 
         if layer not in self.LAYERS:
             return
 
-        self.scene.removeItem(self.pixmap_item[self.current_layer])
+        self.scene.removeItem(self.pixmap_item[self.current_dither][self.current_detector][self.current_layer])
 
-        if self.pixmap_item[layer] is None:
+        if self.pixmap_item[self.current_dither][self.current_detector][layer] is None:
             if layer == 'original':
                 image_data = self.inspector.exposures[self.current_dither][self.current_detector].data
                 pixmap = utils.np_to_pixmap(image_data, image_data.max())
@@ -378,14 +385,15 @@ class ViewTab(QWidget):
                 image_data = self.get_residual_image()
                 pixmap = self.get_pixmap(image_data)
             elif layer == 'model':
+                print('switching to the model layer')
                 image_data = self.get_model_image()
                 pixmap = self.get_pixmap(image_data)
 
             pixmap_item = self.scene.addPixmap(pixmap)
             pixmap_item.setZValue(-1.0)
-            self.pixmap_item[layer] = pixmap_item
+            self.pixmap_item[self.current_dither][self.current_detector][layer] = pixmap_item
         else:
-            self.scene.addItem(self.pixmap_item[layer])
+            self.scene.addItem(self.pixmap_item[self.current_dither][self.current_detector][layer])
 
         self.current_layer = layer
 

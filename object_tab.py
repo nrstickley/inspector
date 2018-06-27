@@ -17,6 +17,10 @@ import utils
 J_WAV = 13697.01  # in angstroms
 H_WAV = 17761.52  # in angstroms
 
+flag = {"ZERO": np.uint32(2**18),     # zeroth-order: bit 18
+        "MISSING": np.uint32(2**19),  # missing data: bit 19
+        "SIGCONT": np.uint32(2**20)}  # significantly contaminated; contamination flux is > 10% of source flux: bit 20
+
 
 class PlotSelector(QWidget):
     """
@@ -259,12 +263,16 @@ class SpecPlot:
             x_max = max(pixels[short_wav_end], pixels[long_wav_end])
             plot.axis.set_xlim((x_min, x_max))
 
+        zeroth_mask = np.sum(spec.mask & flag['ZERO'], axis=dispersion_axis)
+
         if self._data_series & PlotSelector.S_ORIG == PlotSelector.S_ORIG:
             if plot_flux:
                 uncalibrated = np.sum(spec.science + spec.contamination, axis=dispersion_axis)
                 y_values = self._calibrate_spectrum(dither, uncalibrated, wavelengths)
             else:
                 y_values = np.sum(spec.science + spec.contamination, axis=dispersion_axis)
+
+            y_values = np.ma.masked_where(zeroth_mask != 0, y_values)
 
             plot.axis.plot(x_values, y_values[i_min: i_max], label='original spectrum', color='k', linewidth=0.5,
                            alpha=0.7)
@@ -280,9 +288,11 @@ class SpecPlot:
 
         if self._data_series & PlotSelector.S_DECON == PlotSelector.S_DECON:
             if plot_flux:
-                y_values = self._calibrate_spectrum(dither, spec.science.sum(dispersion_axis), wavelengths)
+                y_values_unmasked = self._calibrate_spectrum(dither, spec.science.sum(dispersion_axis), wavelengths)
             else:
-                y_values = spec.science.sum(dispersion_axis)
+                y_values_unmasked = spec.science.sum(dispersion_axis)
+
+            y_values = np.ma.masked_where(zeroth_mask != 0, y_values_unmasked)
 
             plot.axis.plot(x_values, y_values[i_min: i_max], label='decontaminated spectrum', color='b', linewidth=0.9)
 
