@@ -201,6 +201,8 @@ class ViewTab(QWidget):
             detector = self.current_detector
             if dither in collection.get_dithers() and detector in collection.get_detectors(dither):
                 self.selection_area.data_selector.setEnabled(True)
+            else:
+                self.selection_area.data_selector.setDisabled(True)
         else:
             self.selection_area.data_selector.setDisabled(True)
 
