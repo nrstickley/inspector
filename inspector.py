@@ -88,12 +88,12 @@ class Inspector:
 
         load_nisp = QAction('Load Exposures', main_menu)
         load_nisp.setShortcut('Ctrl+E')
-        load_nisp.setStatusTip('Load one or more NISP exposures, listed in a JSON file.')
+        load_nisp.setToolTip('Load one or more NISP exposures, listed in a JSON file.')
         load_nisp.triggered.connect(self.load_exposures)
 
         load_decon = QAction('Load Spectra', main_menu)
         load_decon.setShortcut('Ctrl+P')
-        load_decon.setStatusTip('Load one or more decontaminated spectra collections, listed in a JSON file.')
+        load_decon.setToolTip('Load one or more decontaminated spectra collections, listed in a JSON file.')
         load_decon.triggered.connect(self.load_spectra)
 
         load_loctab = QAction('Load Location Tables', main_menu)
@@ -106,18 +106,23 @@ class Inspector:
         load_sensitivities.setToolTip('Load flux calibration curves for each grism / dither')
         load_sensitivities.triggered.connect(self.load_sensitivities)
 
+        merge_spectra = QAction('Merge Spectra Collections', main_menu)
+        merge_spectra.setShortcut('Ctrl+M')
+        merge_spectra.setToolTip('Merge the contents of multiple Decontaminated Spectra Collections (.json files).')
+        merge_spectra.triggered.connect(self.merge_spectra)
+
         save_session = QAction('Save Session As...', main_menu)
         save_session.setShortcut('Ctrl+S')
-        save_session.setStatusTip('Saves session information, regarding the currently loaded files.')
+        save_session.setToolTip('Saves session information, regarding the currently loaded files.')
         save_session.triggered.connect(self.save_session)
 
         load_session = QAction('Load Session', main_menu)
         load_session.setShortcut('Ctrl+O')
-        load_session.setStatusTip('Loads all files from a previous session.')
+        load_session.setToolTip('Loads all files from a previous session.')
         load_session.triggered.connect(self.load_session)
 
         exit_app = QAction('Exit', main_menu)
-        exit_app.setStatusTip('Close the application.')
+        exit_app.setToolTip('Close the application.')
         exit_app.triggered.connect(self.exit)
 
         file_menu.addAction(load_nisp)
@@ -127,6 +132,10 @@ class Inspector:
         file_menu.addAction(load_loctab)
 
         file_menu.addAction(load_sensitivities)
+
+        file_menu.addSeparator()
+
+        file_menu.addAction(merge_spectra)
 
         file_menu.addSeparator()
 
@@ -197,6 +206,32 @@ class Inspector:
 
         for view_tab in self.view_tab:
             view_tab.update_view()
+
+    def merge_spectra(self):
+        """
+        Combines the lists of DecontaminatedSpectra collections stored in multiple JSON files into a single file.
+        """
+        filenames, _ = QFileDialog.getOpenFileNames(self.main, caption='Merge Decontaminated Spectra Collections',
+                                                    filter='*.json')
+        if (not isinstance(filenames, list)) or len(filenames) == 0:
+            return
+
+        all_files = set()
+
+        for filename in filenames:
+            if os.path.isfile(filename):
+                with open(filename) as f:
+                    location_table_list = json.load(f)
+                    for location_table in location_table_list:
+                        all_files.add(location_table)
+
+        combined_list = list(all_files)
+
+        if len(combined_list) > 0:
+            outfile, _ = QFileDialog.getSaveFileName(self.main, caption='Save Combined Spectra', filter='*.json')
+
+            with open(outfile, 'w') as f:
+                json.dump(combined_list, f)
 
     def load_exposures(self):
         """Loads Background-subtracted NISP Exposures."""
